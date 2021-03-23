@@ -19,7 +19,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   @impl true
   def handle_params(params, _session, socket) do
-    with {:ok, {from, to}} <- parse_time_range(params),
+    with true <- connected?(socket),
+    {:ok, {from, to}} <- parse_time_range(params),
          {:ok, dagre} <- Dagre.query_dagre(from, to) do
       send(self(), {:dagre_data, dagre})
       {:noreply, assign(socket, time_range: "", time_from: from, time_to: to)}
