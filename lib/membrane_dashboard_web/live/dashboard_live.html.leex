@@ -1,11 +1,20 @@
 <div style="height: 100%">
-  <form phx-change="validate-timestamps" phx-submit="refresh">
-    <input type="text" placeholder="Still in development, copy/paste time range from grafana 'from=...&to=...'" name="timestamps" phx-debounce="blur"/>
-    <button name="button" type="submit">Go to time range</button>
+  <h3>Search in time range</h3>
+  <form phx-change="validate-time-range" phx-submit="refresh">
+    <input type="text" required placeholder="Still in development, copy/paste time range from grafana 'from=...&to=...'" name="timeRange" phx-debounce="blur"/>
+    <button name="button" type="submit">Search</button>
   </form>
+
+  <div class="TimeRange">
+    <%= if not is_nil(@time_from) and not is_nil(@time_to) do %>
+      <h3>Time range</h3>
+      <div><%= format_time(@time_from) %> to <%= format_time(@time_to) %></div>
+    <% end %>
+  </div>
   <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
 
   <%= if not is_nil(@top_level_combos) do %>
+    <h3>Pipelines</h3>
     <div id="top-level-combos" class="DagreCombos">
         <%= for combo <- @top_level_combos do %>
           <div data-combo-id="<%= combo["id"] %>" class="Combo" phx-click="focus-combo:<%= combo["id"] %>"><%= combo["label"] %></div>

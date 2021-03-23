@@ -36,41 +36,45 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
           to_is_bin: to_is_bin
         })
       end)
-      |> Enum.reduce(%{nodes: MapSet.new(), edges: MapSet.new(), combos: MapSet.new()}, fn link,
-                                                                                           %{
-                                                                                             nodes:
-                                                                                               nodes,
-                                                                                             edges:
-                                                                                               edges,
-                                                                                             combos:
-                                                                                               combos
-                                                                                           } ->
-        {from_combo, to_combo} = link_combos(link)
-
+      |> Enum.reduce(
         %{
-          nodes:
-            nodes
-            |> MapSet.put(%{
-              id: link.from_node,
-              label: link.from,
-              comboId: from_combo.id,
-              style: if(link.from_is_bin, do: @bin_node_style, else: %{})
-            })
-            |> MapSet.put(%{
-              id: link.to_node,
-              label: link.to,
-              comboId: to_combo.id,
-              style: if(link.to_is_bin, do: @bin_node_style, else: %{})
-            }),
-          edges:
-            edges
-            |> MapSet.put(%{
-              source: link.from_node,
-              target: link.to_node
-            }),
-          combos: combos |> MapSet.put(from_combo) |> MapSet.put(to_combo)
-        }
-      end)
+          nodes: MapSet.new(),
+          edges: MapSet.new(),
+          combos: MapSet.new()
+        },
+        fn link,
+           %{
+             nodes: nodes,
+             edges: edges,
+             combos: combos
+           } ->
+          {from_combo, to_combo} = link_combos(link)
+
+          %{
+            nodes:
+              nodes
+              |> MapSet.put(%{
+                id: link.from_node,
+                label: link.from,
+                comboId: from_combo.id,
+                style: if(link.from_is_bin, do: @bin_node_style, else: %{})
+              })
+              |> MapSet.put(%{
+                id: link.to_node,
+                label: link.to,
+                comboId: to_combo.id,
+                style: if(link.to_is_bin, do: @bin_node_style, else: %{})
+              }),
+            edges:
+              edges
+              |> MapSet.put(%{
+                source: link.from_node,
+                target: link.to_node
+              }),
+            combos: combos |> MapSet.put(from_combo) |> MapSet.put(to_combo)
+          }
+        end
+      )
 
     {:ok, result}
   end
