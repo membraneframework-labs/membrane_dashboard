@@ -2,6 +2,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
   alias Membrane.Dashboard.Dagre
+  alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
   @time_range_regex Regex.compile!("^from=([0-9]+)&to=([0-9]+)$")
 
@@ -14,6 +15,18 @@ defmodule Membrane.DashboardWeb.DashboardLive do
        time_from: nil,
        time_to: nil
      )}
+  end
+
+  @impl true
+  def handle_params(params, _session, socket) do
+    with {:ok, {from, to}} <- parse_time_range(params),
+         {:ok, dagre} <- Dagre.query_dagre(from, to) do
+      send(self(), {:dagre_data, dagre})
+      {:noreply, assign(socket, time_range: "", time_from: from, time_to: to)}
+    else
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -32,11 +45,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   def handle_event("refresh", _values, socket) do
-    with {:ok, {from, to}} <- parse_time_range(socket.assigns.time_range),
-         {:ok, dagre} <- Dagre.query_dagre(from, to) do
-      send(self(), {:dagre_data, dagre})
-
-      {:noreply, assign(socket, time_range: "", time_from: from, time_to: to)}
+    with {:ok, {from, to}} <- parse_time_range(socket.assigns.time_range) do
+      {:noreply,
+       push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: from, to: to}))}
     else
       _ ->
         {:noreply, socket}
@@ -55,7 +66,17 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     ~U[1970-01-01 00:00:00Z] |> DateTime.add(time, :millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_time_range(time_range) do
+  defp parse_time_range(%{"from" => from, "to" => to}) do
+    [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
+
+    {:ok, {from, to}}
+  end
+
+  defp parse_time_range(%{}) do
+    {:error, "Time range params are missing"}
+  end
+
+  defp parse_time_range(time_range) when is_binary(time_range) do
     with [_, from, to] <- Regex.run(@time_range_regex, time_range) do
       [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
       {:ok, {from, to}}
