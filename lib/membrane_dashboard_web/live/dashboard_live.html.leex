@@ -1,3 +1,17 @@
 <div style="height: 100%">
-  <div id="dagre-container" phx-hook="Dagre" style="height: 100%; width: 100%;" />
+  <form phx-change="validate-timestamps" phx-submit="refresh">
+    <input type="text" placeholder="Still in development, copy/paste time range from grafana 'from=...&to=...'" name="timestamps" phx-debounce="blur"/>
+    <button name="button" type="submit">Go to time range</button>
+  </form>
+  <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
+
+  <%= if not is_nil(@top_level_combos) do %>
+    <div id="top-level-combos" class="DagreCombos">
+        <%= for combo <- @top_level_combos do %>
+          <div data-combo-id="<%= combo["id"] %>" class="Combo" phx-click="focus-combo:<%= combo["id"] %>"><%= combo["label"] %></div>
+        <% end %>
+    </div>
+  <% end %>
+
+  <button id="dagre-relayout">Relayout dagre</button>
 </div>

@@ -98,3 +98,33 @@
   border: 1px black;
   padding: 10px;
 }
+
+.Dagre {
+  height: 50%;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.DagreCombos {
+  display: flex;
+  flex-direction: row;
+  border: 1px solid #ccc;
+  border-radius: 16px;
+  padding: 5px;
+  margin-bottom: 10px;
+  
+  .Combo {
+    padding: 10px 10px;
+    border-radius: 16px;
+    border: 1px solid #ccc;
+    margin: 0 10px;
+    cursor: pointer;
+    &:hover {
+      background-color: lightgray;
+    }
+  }
+}
+
+

@@ -1,11 +1,11 @@
 defmodule Membrane.Dashboard.Dagre.Marshaller do
   @type link_t :: %{
-    parent_path: String.t(),
-    from: String.t(),
-    to: String.t(),
-    pad_from: String.t(),
-    pad_to: String.t()
-  }
+          parent_path: String.t(),
+          from: String.t(),
+          to: String.t(),
+          pad_from: String.t(),
+          pad_to: String.t()
+        }
 
   @callback run([link_t()]) :: {:ok, any()} | {:error, any()}
 
