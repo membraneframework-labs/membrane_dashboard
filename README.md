@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Membrane Dashboard 
 
 This repository contains a dashboard for monitoring Membrane's pipelines.
@@ -38,25 +37,3 @@ Copyright 2021, [Software Mansion](https://swmansion.com/?utm_source=git&utm_med
 [![Software Mansion](https://logo.swmansion.com/logo?color=white&variant=desktop&width=200&tag=membrane-github)](https://swmansion.com/?utm_source=git&utm_medium=readme&utm_campaign=membrane_dashboard)
 
 Licensed under the [Apache License, Version 2.0](LICENSE)
-=======
-# Membrane.Dashboard
-
-To start your Phoenix server:
-
-  * Install dependencies with `mix deps.get`
-  * Create and migrate your database with `mix ecto.setup`
-  * Install Node.js dependencies with `npm install` inside the `assets` directory
-  * Start Phoenix endpoint with `mix phx.server`
-
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
-
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
-
-## Learn more
-
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
->>>>>>> efd8bca... Initial commit
