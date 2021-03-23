@@ -13,70 +13,71 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
 
     result =
       links
-      |> Enum.map(fn link ->
-        parents = link.parent_path |> String.split("/")
-
-        last_parent = parents |> List.last()
-
-        {from_is_bin, from_path} = element_path(link.parent_path, parents, link.from, bin_nodes)
-        {to_is_bin, to_path} = element_path(link.parent_path, parents, link.to, bin_nodes)
-
-        from = format_element(last_parent, link.from, link.pad_from, from_is_bin)
-        to = format_element(last_parent, link.to, link.pad_to, to_is_bin)
-
-        link
-        |> Map.merge(%{
-          from: from,
-          from_node: generate_node(from_path, from),
-          from_path: from_path,
-          from_is_bin: from_is_bin,
-          to: to,
-          to_node: generate_node(to_path, to),
-          to_path: to_path,
-          to_is_bin: to_is_bin
-        })
-      end)
+      |> Enum.map(fn link -> format_link(link, bin_nodes) end)
       |> Enum.reduce(
         %{
           nodes: MapSet.new(),
           edges: MapSet.new(),
           combos: MapSet.new()
         },
-        fn link,
-           %{
-             nodes: nodes,
-             edges: edges,
-             combos: combos
-           } ->
-          {from_combo, to_combo} = link_combos(link)
-
-          %{
-            nodes:
-              nodes
-              |> MapSet.put(%{
-                id: link.from_node,
-                label: link.from,
-                comboId: from_combo.id,
-                style: if(link.from_is_bin, do: @bin_node_style, else: %{})
-              })
-              |> MapSet.put(%{
-                id: link.to_node,
-                label: link.to,
-                comboId: to_combo.id,
-                style: if(link.to_is_bin, do: @bin_node_style, else: %{})
-              }),
-            edges:
-              edges
-              |> MapSet.put(%{
-                source: link.from_node,
-                target: link.to_node
-              }),
-            combos: combos |> MapSet.put(from_combo) |> MapSet.put(to_combo)
-          }
-        end
+        &reduce_link/2
       )
 
     {:ok, result}
+  end
+
+  defp format_link(link, bin_nodes) do
+    parents = link.parent_path |> String.split("/")
+
+    last_parent = parents |> List.last()
+
+    {from_is_bin, from_path} = element_path(link.parent_path, parents, link.from, bin_nodes)
+    {to_is_bin, to_path} = element_path(link.parent_path, parents, link.to, bin_nodes)
+
+    from = format_element(last_parent, link.from, link.pad_from, from_is_bin)
+    to = format_element(last_parent, link.to, link.pad_to, to_is_bin)
+
+    link
+    |> Map.merge(%{
+      from: from,
+      from_node: generate_node(from_path, from),
+      from_path: from_path,
+      from_is_bin: from_is_bin,
+      to: to,
+      to_node: generate_node(to_path, to),
+      to_path: to_path,
+      to_is_bin: to_is_bin
+    })
+  end
+
+  defp reduce_link(link, %{nodes: nodes, edges: edges, combos: combos}) do
+    {from_combo, to_combo} = link_combos(link)
+
+    %{
+      nodes:
+        nodes
+        # put 'from' node
+        |> MapSet.put(%{
+          id: link.from_node,
+          label: link.from,
+          comboId: from_combo.id,
+          style: if(link.from_is_bin, do: @bin_node_style, else: %{})
+        })
+        # put 'to' node
+        |> MapSet.put(%{
+          id: link.to_node,
+          label: link.to,
+          comboId: to_combo.id,
+          style: if(link.to_is_bin, do: @bin_node_style, else: %{})
+        }),
+      edges:
+        edges
+        |> MapSet.put(%{
+          source: link.from_node,
+          target: link.to_node
+        }),
+      combos: combos |> MapSet.put(from_combo) |> MapSet.put(to_combo)
+    }
   end
 
   defp collect_bin_nodes(links) do
@@ -86,6 +87,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
     |> MapSet.new()
   end
 
+  # returns 'from' and 'to' elements combos
   defp link_combos(link) do
     from_combo = combo(link.from_path)
     to_combo = combo(link.to_path)
@@ -124,7 +126,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
   defp hash_string(to_hash), do: to_hash |> :erlang.md5() |> Base.encode16()
 
   # element_path is responsible for retrieving element path
-  # it gets tricky when element itself is a bin
+  # it has to be changed in case given element is a bin itself
   defp element_path(_parent_path, parents, @bin_itself, _bin_nodes) do
     {true, parents}
   end
