@@ -1,28 +1,11 @@
 defmodule Membrane.DashboardWeb do
-  @moduledoc """
-  The entrypoint for defining your web interface, such
-  as controllers, views, channels and so on.
-
-  This can be used in your application as:
-
-      use Membrane.DashboardWeb, :controller
-      use Membrane.DashboardWeb, :view
-
-  The definitions below will be executed for every view,
-  controller, etc, so keep them short and clean, focused
-  on imports, uses and aliases.
-
-  Do NOT define functions inside the quoted expressions
-  below. Instead, define any helper function in modules
-  and import those modules here.
-  """
+  @moduledoc false
 
   def controller do
     quote do
       use Phoenix.Controller, namespace: Membrane.DashboardWeb
 
       import Plug.Conn
-      import Membrane.DashboardWeb.Gettext
       alias Membrane.DashboardWeb.Router.Helpers, as: Routes
     end
   end
@@ -72,7 +55,6 @@ defmodule Membrane.DashboardWeb do
   def channel do
     quote do
       use Phoenix.Channel
-      import Membrane.DashboardWeb.Gettext
     end
   end
 
@@ -88,7 +70,6 @@ defmodule Membrane.DashboardWeb do
       import Phoenix.View
 
       import Membrane.DashboardWeb.ErrorHelpers
-      import Membrane.DashboardWeb.Gettext
       alias Membrane.DashboardWeb.Router.Helpers, as: Routes
     end
   end

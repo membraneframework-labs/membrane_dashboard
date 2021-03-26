@@ -1,7 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.Dagre
+  alias Membrane.Dashboard.{Dagre, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
   @time_range_regex Regex.compile!("^from=([0-9]+)&to=([0-9]+)$")
@@ -20,13 +20,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_params(params, _session, socket) do
     with true <- connected?(socket),
-    {:ok, {from, to}} <- parse_time_range(params),
+         {:ok, {from, to}} <- parse_time_range(params),
          {:ok, dagre} <- Dagre.query_dagre(from, to) do
       send(self(), {:dagre_data, dagre})
       {:noreply, assign(socket, time_range: "", time_from: from, time_to: to)}
     else
-      _ ->
-        {:noreply, socket}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -40,8 +39,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     with {:ok, _} <- parse_time_range(time_range) do
       {:noreply, assign(socket, time_range: time_range)}
     else
-      {:error, reason} ->
-        {:noreply, socket |> put_flash(:error, reason)}
+      {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
   end
 
@@ -50,8 +48,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       {:noreply,
        push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: from, to: to}))}
     else
-      _ ->
-        {:noreply, socket}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -64,26 +61,21 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   def format_time(time) do
-    ~U[1970-01-01 00:00:00Z] |> DateTime.add(time, :millisecond) |> DateTime.to_iso8601()
+    time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
   end
 
-  defp parse_time_range(%{"from" => from, "to" => to}) do
-    [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
+  defp parse_time_range(%{"from" => from, "to" => to}),
+    do: {:ok, {String.to_integer(from), String.to_integer(to)}}
 
-    {:ok, {from, to}}
-  end
-
-  defp parse_time_range(%{}) do
-    {:error, "Time range params are missing"}
-  end
+  defp parse_time_range(%{}),
+    do: {:error, "Time range params are missing"}
 
   defp parse_time_range(time_range) when is_binary(time_range) do
     with [_, from, to] <- Regex.run(@time_range_regex, time_range) do
       [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
       {:ok, {from, to}}
     else
-      _ ->
-        {:error, "Invalid time range format"}
+      _ -> {:error, "Invalid time range format"}
     end
   end
 end

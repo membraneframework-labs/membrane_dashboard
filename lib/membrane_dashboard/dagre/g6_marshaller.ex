@@ -15,11 +15,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
       links
       |> Enum.map(fn link -> format_link(link, bin_nodes) end)
       |> Enum.reduce(
-        %{
-          nodes: MapSet.new(),
-          edges: MapSet.new(),
-          combos: MapSet.new()
-        },
+        %{nodes: MapSet.new(), edges: MapSet.new(), combos: MapSet.new()},
         &reduce_link/2
       )
 
@@ -119,11 +115,11 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
   defp format_element(_last_parent, element, pad, true), do: element <> "\n" <> pad
   defp format_element(_last_parent, element, _pad, false), do: element
 
-  defp generate_node(path, element) do
-    "#{path |> Enum.join()}#{element}" |> hash_string()
-  end
+  defp generate_node(path, element),
+    do: "#{path |> Enum.join()}#{element}" |> hash_string()
 
-  defp hash_string(to_hash), do: to_hash |> :erlang.md5() |> Base.encode16()
+  defp hash_string(to_hash),
+    do: to_hash |> :erlang.md5() |> Base.encode16()
 
   # element_path is responsible for retrieving element path
   # it has to be changed in case given element is a bin itself
