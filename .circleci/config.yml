@@ -1,0 +1,25 @@
+version: 2.0
+workflows:
+  version: 2
+  main:
+    jobs:
+      - lint
+
+jobs:
+  lint:
+    docker:
+      - image: cimg/elixir:1.11.4-node
+        environment:
+          MIX_ENV: dev
+
+    working_directory: ~/app
+
+    steps:
+      - checkout
+      - run: mix local.hex --force
+      - run: mix local.rebar --force
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix compile
+      - run: npm ci --prefix assets
+      - run: npm run lint --prefix assets

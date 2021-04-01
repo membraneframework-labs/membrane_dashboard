@@ -59,8 +59,6 @@ defmodule Membrane.Dashboard.Dagre do
 
   @type time_interval_t :: non_neg_integer()
 
-  @beginning_of_time ~U[1970-01-01 00:00:00Z]
-
   @interval_pattern Regex.compile!("([0-9]+)(s|m|h|d|M|y)")
 
   @spec query_dagre(time_interval_t(), time_interval_t()) :: {:ok, any()} | {:error, any()}
@@ -115,7 +113,7 @@ defmodule Membrane.Dashboard.Dagre do
         "m" -> 60
         "h" -> 60 * 60
         "d" -> 60 * 60 * 24
-        "M" -> 60*  60 * 24 * 30
+        "M" -> 60 * 60 * 24 * 30
         "y" -> 60 * 60 * 24 * 365
       end
 

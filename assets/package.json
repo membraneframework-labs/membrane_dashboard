@@ -4,7 +4,9 @@
   "license": "MIT",
   "scripts": {
     "deploy": "webpack --mode production",
-    "watch": "webpack --mode development --watch"
+    "watch": "webpack --mode development --watch",
+    "format": "prettier --write .",
+    "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "@antv/g6": "^4.2.1",
@@ -18,13 +20,21 @@
     "@babel/preset-env": "^7.0.0",
     "@types/phoenix": "^1.5.1",
     "@types/phoenix_live_view": "^0.14.0",
+    "@typescript-eslint/eslint-plugin": "^4.20.0",
+    "@typescript-eslint/parser": "^4.20.0",
     "babel-loader": "^8.0.0",
     "copy-webpack-plugin": "^5.1.1",
     "css-loader": "^3.4.2",
+    "eslint": "^7.23.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.3.1",
     "hard-source-webpack-plugin": "^0.13.1",
     "mini-css-extract-plugin": "^0.9.0",
     "node-sass": "^4.13.1",
     "optimize-css-assets-webpack-plugin": "^5.0.1",
+    "prettier": "^2.2.1",
     "sass-loader": "^8.0.2",
     "terser-webpack-plugin": "^2.3.2",
     "ts-loader": "^8.0.18",

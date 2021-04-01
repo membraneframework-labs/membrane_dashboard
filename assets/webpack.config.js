@@ -26,7 +26,7 @@ module.exports = (env, options) => {
       publicPath: "/js/",
     },
     resolve: {
-      extensions: ['.ts', '.js'],
+      extensions: [".ts", ".js"],
     },
     devtool: devMode ? "eval-cheap-module-source-map" : undefined,
     module: {
