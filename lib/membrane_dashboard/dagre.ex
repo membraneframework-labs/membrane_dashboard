@@ -101,24 +101,24 @@ defmodule Membrane.Dashboard.Dagre do
   defp parse_time("now"), do: DateTime.utc_now()
 
   defp parse_time("now-" <> interval) do
-    {time, unit} = parse_interval(interval)
+    time = parse_interval(interval)
 
-    DateTime.utc_now() |> DateTime.add(time, unit)
+    DateTime.utc_now() |> DateTime.add(time, :second)
   end
 
   defp parse_interval(interval) do
     [_, time, unit] = Regex.run(@interval_pattern, interval)
 
-    {unit, multiplier} =
+    multiplier =
       case unit do
-        "s" -> {:second, 1}
-        "m" -> {:minute, 1}
-        "h" -> {:minute, 60}
-        "d" -> {:minute, 60 * 24}
-        "M" -> {:minute, 60 * 24 * 30}
-        "y" -> {:minute, 60 * 24 * 365}
+        "s" -> 1
+        "m" -> 60
+        "h" -> 60 * 60
+        "d" -> 60 * 60 * 24
+        "M" -> 60*  60 * 24 * 30
+        "y" -> 60 * 60 * 24 * 365
       end
 
-    {String.to_integer(time) * multiplier, unit}
+    String.to_integer(time) * multiplier
   end
 end
