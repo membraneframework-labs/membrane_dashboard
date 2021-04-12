@@ -4,13 +4,10 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.Dashboard.{Dagre, Charts, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
-  @time_range_regex Regex.compile!("^from=([0-9]+)&to=([0-9]+)$")
-
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
-       time_range: nil,
        top_level_combos: nil,
        time_from: now(-300),
        time_to: now()
@@ -27,7 +24,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
 
-      {:noreply, assign(socket, time_range: nil, time_from: from, time_to: to)}
+      {:noreply, assign(socket, time_from: from, time_to: to)}
     else
       _ -> {:noreply, socket}
     end
@@ -78,24 +75,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
   end
 
-  defp to_time_range(time_from, time_to) do
-    "from=#{time_from}&to=#{time_to}"
-  end
-
   defp parse_time_range(%{"from" => from, "to" => to}),
     do: {:ok, {String.to_integer(from), String.to_integer(to)}}
-
-  defp parse_time_range(%{}),
-    do: {:error, "Time range params are missing"}
-
-  defp parse_time_range(time_range) when is_binary(time_range) do
-    with [_, from, to] <- Regex.run(@time_range_regex, time_range) do
-      [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
-      {:ok, {from, to}}
-    else
-      _ -> {:error, "Invalid time range format"}
-    end
-  end
 
   defp parse_time_range(time_from, time_to) do
     with [{:ok, date_time_from, _offset_from}, {:ok, date_time_to, _offset_to}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),

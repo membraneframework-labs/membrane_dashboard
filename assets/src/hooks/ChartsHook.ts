@@ -56,7 +56,7 @@ const ChartsHook = {
 };
 
 function randomColor() {
-    return "#" + randomHexNumber(0, 200) + randomHexNumber(0, 200) + randomHexNumber(0, 200);
+    return "#" + randomHexNumber(64, 255) + randomHexNumber(64, 255) + randomHexNumber(64, 255);
 }
 
 function randomHexNumber(min: number, max: number) {

@@ -33,6 +33,26 @@ export function createCharts(container: HTMLElement, width: number, height: numb
               [1,          ":{ss}",       "\n{D}/{M}/{YY} {HH}:{mm}", null, "\n{D}/{M} {HH}:{mm}", null, "\n{HH}:{mm}",     null, 1],
               [0.001,      ":{ss}.{fff}", "\n{D}/{M}/{YY} {HH}:{mm}", null, "\n{D}/{M} {HH}:{mm}", null, "\n{HH}:{mm}",     null, 1],
             ],
+            stroke: "#c7d0d9",
+						
+            grid: {
+							stroke: "#2c3235",
+						},
+						
+            ticks: {
+							stroke: "#2c3235",
+						},
+          },
+          {
+            stroke: "#c7d0d9",
+						
+            grid: {
+							stroke: "#2c3235",
+						},
+						
+            ticks: {
+							stroke: "#2c3235",
+						},
           },
         ],
         }, data, container);

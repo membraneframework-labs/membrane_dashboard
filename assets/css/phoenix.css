@@ -16,7 +16,8 @@ html {
   font-size: 62.5%;
 }
 body {
-  color: #000000;
+  background-color: #141619;
+	color: #c7d0d9;
   font-family: "Helvetica", "Arial", sans-serif;
   font-size: 1.6em;
   font-weight: 300;
@@ -200,6 +201,7 @@ select {
   border-radius: 0.4rem;
   box-shadow: none;
   box-sizing: inherit;
+  color: #c7d0d9;
   height: 3.8rem;
   padding: 0.6rem 1rem;
   width: 100%;
