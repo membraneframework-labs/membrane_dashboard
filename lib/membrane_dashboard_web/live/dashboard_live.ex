@@ -1,7 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.{Dagre, Helpers}
+  alias Membrane.Dashboard.{Dagre, Charts, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
   @time_range_regex Regex.compile!("^from=([0-9]+)&to=([0-9]+)$")
@@ -10,10 +10,10 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
-       time_range: "",
+       time_range: nil,
        top_level_combos: nil,
-       time_from: nil,
-       time_to: nil
+       time_from: now(-300),
+       time_to: now()
      )}
   end
 
@@ -21,9 +21,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_params(params, _session, socket) do
     with true <- connected?(socket),
          {:ok, {from, to}} <- parse_time_range(params),
-         {:ok, dagre} <- Dagre.query_dagre(from, to) do
+         {:ok, dagre} <- Dagre.query_dagre(from, to),
+         {:ok, charts} <- Charts.query_charts(from, to) do
+
       send(self(), {:dagre_data, dagre})
-      {:noreply, assign(socket, time_range: "", time_from: from, time_to: to)}
+      send(self(), {:charts_data, charts})
+
+      {:noreply, assign(socket, time_range: nil, time_from: from, time_to: to)}
     else
       _ -> {:noreply, socket}
     end
@@ -34,22 +38,26 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, push_event(socket, "dagre_data", %{data: data})}
   end
 
+  def handle_info({:charts_data, data}, socket) do
+    {:noreply, push_event(socket, "charts_data", %{data: data})}
+  end
+
   @impl true
-  def handle_event("validate-time-range", %{"timeRange" => time_range}, socket) do
-    with {:ok, _} <- parse_time_range(time_range) do
-      {:noreply, assign(socket, time_range: time_range)}
+  def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
+    with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
+      {:noreply,
+       push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: from, to: to}))}
     else
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
   end
 
-  def handle_event("refresh", _values, socket) do
-    with {:ok, {from, to}} <- parse_time_range(socket.assigns.time_range) do
-      {:noreply,
-       push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: from, to: to}))}
-    else
-      _ -> {:noreply, socket}
-    end
+  def handle_event("last-5-min", _values, socket) do
+    {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-300), to: now()}))}
+  end
+
+  def handle_event("last-10-min", _values, socket) do
+    {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-600), to: now()}))}
   end
 
   def handle_event("top-level-combos", combos, socket) do
@@ -60,8 +68,18 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
   end
 
+  def now(offset \\ 0) do
+    DateTime.utc_now()
+    |> DateTime.add(offset)
+    |> DateTime.to_unix(:milliseconds)
+  end
+
   def format_time(time) do
     time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
+  end
+
+  defp to_time_range(time_from, time_to) do
+    "from=#{time_from}&to=#{time_to}"
   end
 
   defp parse_time_range(%{"from" => from, "to" => to}),
@@ -74,6 +92,18 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     with [_, from, to] <- Regex.run(@time_range_regex, time_range) do
       [from, to] = [from, to] |> Enum.map(&String.to_integer/1)
       {:ok, {from, to}}
+    else
+      _ -> {:error, "Invalid time range format"}
+    end
+  end
+
+  defp parse_time_range(time_from, time_to) do
+    with [{:ok, date_time_from, _offset_from}, {:ok, date_time_to, _offset_to}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),
+         [from, to] <- [date_time_from, date_time_to] |> Enum.map(fn time -> DateTime.to_unix(time, :milliseconds) end) do
+      cond do
+        to > from -> {:ok, {from, to}}
+        true      -> {:error, "\"from\" should be before \"to\""}
+      end
     else
       _ -> {:error, "Invalid time range format"}
     end

@@ -1,8 +1,13 @@
-<div style="height: 100%">
+<div style="height: 150%">
   <h3>Search in time range</h3>
-  <form phx-change="validate-time-range" phx-submit="refresh">
-    <input type="text" required placeholder="Still in development, copy/paste time range from grafana 'from=...&to=...'" name="timeRange" phx-debounce="blur"/>
+  <form phx-submit="refresh">
+    <label>From</label>
+    <input type="text" value="<%= format_time(@time_from) %>" name="timeFrom" phx-debounce="blur"/>
+    <label>To</label>
+    <input type="text" value="<%= format_time(@time_to) %>" name="timeTo" phx-debounce="blur"/>
     <button name="button" type="submit">Search</button>
+    <button name="button" type="button" phx-click="last-5-min">Last 5 min</button>
+    <button name="button" type="button" phx-click="last-10-min">Last 10 min</button>
   </form>
 
   <div class="TimeRange">
@@ -11,6 +16,9 @@
       <div><%= format_time(@time_from) %> to <%= format_time(@time_to) %></div>
     <% end %>
   </div>
+
+  <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
+
   <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
 
   <%= if not is_nil(@top_level_combos) do %>
