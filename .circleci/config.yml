@@ -8,7 +8,7 @@ workflows:
 jobs:
   lint:
     docker:
-      - image: cimg/elixir:1.11.4-node
+      - image: membrane/membrane:latest 
         environment:
           MIX_ENV: dev
 
