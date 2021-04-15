@@ -61,8 +61,8 @@ defmodule Membrane.Dashboard.Dagre do
 
   @type time_interval_t :: non_neg_integer()
 
-  @spec query_dagre(time_interval_t(), time_interval_t()) :: {:ok, any()} | {:error, any()}
-  def query_dagre(time_from, time_to) do
+  @spec query(time_interval_t(), time_interval_t()) :: {:ok, any()} | {:error, any()}
+  def query(time_from, time_to) do
     result =
       """
       SELECT parent_path, l.from, l.to, pad_from, pad_to FROM links l WHERE time BETWEEN \

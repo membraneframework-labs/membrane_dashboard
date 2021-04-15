@@ -4,22 +4,26 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.Dashboard.{Dagre, Charts, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
+  @initial_time_offset 300
+
+  # initial time range is the last '@initial_time_offset' seconds
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
        top_level_combos: nil,
-       time_from: now(-300),
+       time_from: now(-@initial_time_offset),
        time_to: now()
      )}
   end
 
+  # gets data for dagre and charts and assign time range to socket
   @impl true
   def handle_params(params, _session, socket) do
     with true <- connected?(socket),
-         {:ok, {from, to}} <- parse_time_range(params),
-         {:ok, dagre} <- Dagre.query_dagre(from, to),
-         {:ok, charts} <- Charts.query_charts(from, to) do
+         {:ok, {from, to}} <- extract_time_range(params, socket),
+         {:ok, dagre} <- Dagre.query(from, to),
+         {:ok, charts} <- Charts.query("store", from, to) do
 
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
@@ -30,6 +34,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
+  # refreshes dagre and charts
   @impl true
   def handle_info({:dagre_data, data}, socket) do
     {:noreply, push_event(socket, "dagre_data", %{data: data})}
@@ -49,12 +54,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
-  def handle_event("last-5-min", _values, socket) do
-    {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-300), to: now()}))}
-  end
-
-  def handle_event("last-10-min", _values, socket) do
-    {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-600), to: now()}))}
+  def handle_event("last-x-min", %{"value" => minutes}, socket) do
+    with {minutes_as_int, ""} <- Integer.parse(minutes) do
+      {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-60*minutes_as_int), to: now()}))}
+    else
+      _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
+    end
   end
 
   def handle_event("top-level-combos", combos, socket) do
@@ -65,25 +70,36 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
   end
 
-  def now(offset \\ 0) do
+  @doc """
+  Changes UNIX time to ISO 8601 format
+  """
+  @spec format_time(non_neg_integer()) :: String.t()
+  def format_time(time) do
+    time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
+  end
+
+  # returns current UNIX time with optional offset
+  defp now(offset \\ 0) do
     DateTime.utc_now()
     |> DateTime.add(offset)
     |> DateTime.to_unix(:milliseconds)
   end
 
-  def format_time(time) do
-    time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
-  end
-
-  defp parse_time_range(%{"from" => from, "to" => to}),
+  # returns pair of UNIX time values made from strings in params or extracted from assigns in socket
+  defp extract_time_range(%{"from" => from, "to" => to}, _socket),
     do: {:ok, {String.to_integer(from), String.to_integer(to)}}
 
+  defp extract_time_range(_params, socket),
+    do: {:ok, {socket.assigns.time_from, socket.assigns.time_to}}
+
+  # returns pair of UNIX time values from DateTime in ISO 8601 format
   defp parse_time_range(time_from, time_to) do
-    with [{:ok, date_time_from, _offset_from}, {:ok, date_time_to, _offset_to}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),
+    with [{:ok, date_time_from, _offset}, {:ok, date_time_to, _offset}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),
          [from, to] <- [date_time_from, date_time_to] |> Enum.map(fn time -> DateTime.to_unix(time, :milliseconds) end) do
-      cond do
-        to > from -> {:ok, {from, to}}
-        true      -> {:error, "\"from\" should be before \"to\""}
+      if to > from do
+        {:ok, {from, to}}
+      else
+        {:error, "\"from\" should be before \"to\""}
       end
     else
       _ -> {:error, "Invalid time range format"}

@@ -31,7 +31,7 @@ declare global {
 
 const Hooks = {
   Dagre: DagreHook,
-  Charts: ChartsHook
+  Charts: ChartsHook,
 };
 
 let csrfToken = document

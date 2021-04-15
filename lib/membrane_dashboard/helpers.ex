@@ -1,8 +1,12 @@
 defmodule Membrane.Dashboard.Helpers do
   @beginning_of_time ~U[1970-01-01 00:00:00Z]
 
-  def parse_time(time) when is_number(time),
-    do: Membrane.Dashboard.Helpers.add_to_beginning_of_time(time)
+  @doc """
+  Receives UNIX time in milliseconds add returns DateTime (appropriate format for SQL queries).
+  """
+  @spec add_to_beginning_of_time(non_neg_integer()) :: DateTime.t()
+  def parse_time(time) when is_number(time), do:
+    Membrane.Dashboard.Helpers.add_to_beginning_of_time(time)
 
   @doc """
   Adds given time * unit to beginning of UNIX time.
