@@ -1,7 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.{Dagre, Charts, Helpers}
+  alias Membrane.Dashboard.{Dagre, Charts, Methods, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
   @initial_time_offset 300
@@ -9,9 +9,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # initial time range is the last '@initial_time_offset' seconds
   @impl true
   def mount(_params, _session, socket) do
+    {:ok, methods} = Methods.query()
+    send(self(), {:init_data, methods})
+
     {:ok,
      assign(socket,
        top_level_combos: nil,
+       methods: methods,
        time_from: now(-@initial_time_offset),
        time_to: now()
      )}
@@ -23,7 +27,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     with true <- connected?(socket),
          {:ok, {from, to}} <- extract_time_range(params, socket),
          {:ok, dagre} <- Dagre.query(from, to),
-         {:ok, charts} <- Charts.query("store", from, to) do
+         {:ok, charts} <- Charts.query(socket.assigns.methods, from, to) do
 
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
@@ -34,8 +38,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
-  # refreshes dagre and charts
+  # inits and refreshes dagre and charts
   @impl true
+  def handle_info({:init_data, methods}, socket) do
+    {:noreply, push_event(socket, "init_data", %{data: methods})}
+  end
+
   def handle_info({:dagre_data, data}, socket) do
     {:noreply, push_event(socket, "dagre_data", %{data: data})}
   end
@@ -95,7 +103,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # returns pair of UNIX time values from DateTime in ISO 8601 format
   defp parse_time_range(time_from, time_to) do
     with [{:ok, date_time_from, _offset}, {:ok, date_time_to, _offset}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),
-         [from, to] <- [date_time_from, date_time_to] |> Enum.map(fn time -> DateTime.to_unix(time, :milliseconds) end) do
+         [from, to] <- [date_time_from, date_time_to] |> Enum.map(&(DateTime.to_unix(&1, :milliseconds))) do
       if to > from do
         {:ok, {from, to}}
       else

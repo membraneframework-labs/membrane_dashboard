@@ -4,54 +4,66 @@ import { ViewHookInterface } from "phoenix_live_view";
 import { createCharts } from "../utils/charts";
 
 type Hook = ViewHookInterface & {
-  storeChart: uPlot;
-  takeAndDemandChart: uPlot;
+  charts: uPlot[];
 };
 
-interface ChartsData {
+interface ChartData {
   series: Series[];
   data: AlignedData;
 }
 
-interface IncomingData {
-  data: ChartsData;
+interface InitData {
+  data: string[];
+}
+
+interface RefreshData {
+  data: ChartData[];
 }
 
 const ChartsHook = {
   mounted(this: Hook) {
     console.log("Mounting charts");
     const width = this.el.scrollWidth - 20;
-    const height = this.el.scrollHeight;
 
-    const chart = createCharts(this.el, width, height);
-    this.storeChart = chart;
+    this.charts = []
+
+    this.handleEvent("init_data", (payload) => {
+        const methods = (payload as InitData).data;
+        for (const method of methods) {
+            const chart = createCharts(this.el, width, method);
+            this.charts.push(chart);
+        }
+    })
 
     this.handleEvent("charts_data", (payload) => {
       console.log("Received charts data");
-      const chartsData = (payload as IncomingData).data;
+      const chartsData = (payload as RefreshData).data;
 
-      while (this.storeChart.series.length > 1) {
-        this.storeChart.delSeries(1);
-      }
-      this.storeChart.delSeries(0);
+      for (var i=0; i<chartsData.length; i++) {
+        const method = chartsData[i];
+        while (this.charts[i].series.length > 1) {
+            this.charts[i].delSeries(1);
+        }
+        this.charts[i].delSeries(0);
 
-      chartsData.series[0].value = (_, rawValue) => {
-        const data = new Date(rawValue * 1000);
-        return uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}")(data);
-      };
-
-      for (const series of chartsData.series) {
-        const color = randomColor();
-        series.stroke = color;
-        series.paths = (u) => null;
-        series.points = {
-          space: 0,
-          fill: color,
+        chartsData[i].series[0].value = (_, rawValue) => {
+            const data = new Date(rawValue * 1000);
+            return uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}")(data);
         };
-        this.storeChart.addSeries(series);
-      }
 
-      this.storeChart.setData(chartsData.data);
+        for (const series of chartsData[i].series) {
+            const color = randomColor();
+            series.stroke = color;
+            series.paths = (u) => null;
+            series.points = {
+                space: 0,
+                fill: color,
+            };
+            this.charts[i].addSeries(series);
+        }
+
+        this.charts[i].setData(chartsData[i].data);
+      }
     });
   },
 };

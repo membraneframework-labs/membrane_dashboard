@@ -25,10 +25,6 @@ declare global {
   }
 }
 
-// const Hooks = {
-//   Dagre: DagreHook
-// };
-
 const Hooks = {
   Dagre: DagreHook,
   Charts: ChartsHook,

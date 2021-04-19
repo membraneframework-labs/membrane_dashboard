@@ -59,9 +59,7 @@ defmodule Membrane.Dashboard.Dagre do
 
   require Logger
 
-  @type time_interval_t :: non_neg_integer()
-
-  @spec query(time_interval_t(), time_interval_t()) :: {:ok, any()} | {:error, any()}
+  @spec query(non_neg_integer(), non_neg_integer()) :: {:ok, any()} | {:error, any()}
   def query(time_from, time_to) do
     result =
       """

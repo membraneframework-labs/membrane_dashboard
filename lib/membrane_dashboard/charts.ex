@@ -2,7 +2,8 @@ defmodule Membrane.Dashboard.Charts do
   @moduledoc """
   Module responsible for preparing data for uPlot charts.
 
-  Every chart visualizes sizes of buffers found when processing one particular method in pipelines. Data consists of:
+  Every chart visualizes sizes of buffers found when processing one particular method in pipelines. Data is a map from
+  method name to chart data. That chart data consists of:
   - series - list of maps with labels. Used as legend in uPlot;
   - data - list of lists. Represents points on the chart. First list contains timestamps in UNIX time (x axis ticks).
     Every next list have information about one pipeline path. Such list have max buffer size for every timestamp from
@@ -15,24 +16,37 @@ defmodule Membrane.Dashboard.Charts do
 
   @accuracy 0.01
 
-  @type time_interval_t :: non_neg_integer()
+  @type chart_data_t :: %{
+    series: list(%{label: String.t()}),
+    data: list(list(integer()))
+  }
 
   @doc """
-  Queries database to get data appropriate for uPlot. Returns all data for method 'method' and time interval
-  between 'time_from' and 'to_from'.
+  Queries database to get data appropriate for uPlot. Returns all data for all given methods and time interval
+  between 'time_from' and 'time_to'.
   """
-  @spec query(String.t(), time_interval_t(), time_interval_t()) :: {:ok, any()}
-  def query(method, time_from, time_to) do
+  @spec query(list(String.t()), non_neg_integer(), non_neg_integer()) :: {:ok, %{String.t() => chart_data_t()}}
+  def query(methods, time_from, time_to) do
+    charts_data =
+      methods
+      |> Enum.map(fn method -> one_chart_query(method, time_from, time_to) end)
+
+    {:ok, charts_data}
+  end
+
+  # returns data for one method in the given time interval
+  @spec one_chart_query(list(String.t()), non_neg_integer(), non_neg_integer()) :: chart_data_t()
+  defp one_chart_query(method, time_from, time_to) do
     result =
       """
-      SELECT floor(extract(epoch from "time")/#{@accuracy})*#{@accuracy} AS "time",
+      SELECT floor(extract(epoch from "time")/#{@accuracy})*#{@accuracy} AS time,
       path,
       value AS "value"
       FROM measurements m JOIN element_paths ep on m.element_path_id = ep.id
       WHERE
-      "time" BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and method = '#{method}'
-      GROUP BY 1, path, value
-      ORDER BY 1
+      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and method = '#{method}'
+      GROUP BY time, path, value
+      ORDER BY time
       """
       |> Repo.query()
 
@@ -40,12 +54,12 @@ defmodule Membrane.Dashboard.Charts do
 
     interval = create_interval(time_from, time_to)
     data_by_paths = to_series(rows, interval)
-    charts_data = %{
+    chart_data = %{
       series: extract_opt_series(data_by_paths),
       data: extract_data(interval, data_by_paths)
     }
 
-    {:ok, charts_data}
+    chart_data
   end
 
   # time in uPlot have to be discrete, so every event from database will land in one specific timestamp from returned interval
