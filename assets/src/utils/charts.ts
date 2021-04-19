@@ -12,35 +12,26 @@ export function createCharts(
     {
       width: width,
       height: 200,
-
       title: `Input buffer size inside ${method}`,
-
       id: "chart1",
-
       class: "my-chart",
-
       series: [],
-
       axes: [
         {
           values: getXTicksConfig(),
           stroke: "#c7d0d9",
-
           grid: {
             stroke: "#2c3235",
           },
-
           ticks: {
             stroke: "#2c3235",
           },
         },
         {
           stroke: "#c7d0d9",
-
           grid: {
             stroke: "#2c3235",
           },
-
           ticks: {
             stroke: "#2c3235",
           },

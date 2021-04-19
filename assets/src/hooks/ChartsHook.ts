@@ -23,43 +23,45 @@ interface RefreshData {
 const ChartsHook = {
   mounted(this: Hook) {
     console.log("Mounting charts");
-    const width = this.el.scrollWidth - 20;
+    this.charts = [];
 
-    this.charts = []
-
+    // creating empty charts with proper names and sizes
     this.handleEvent("init_data", (payload) => {
-        const methods = (payload as InitData).data;
-        for (const method of methods) {
-            const chart = createCharts(this.el, width, method);
-            this.charts.push(chart);
-        }
-    })
+      const width = this.el.scrollWidth - 20;
+      const methods = (payload as InitData).data;
+      for (const method of methods) {
+        const chart = createCharts(this.el, width, method);
+        this.charts.push(chart);
+      }
+    });
 
     this.handleEvent("charts_data", (payload) => {
       console.log("Received charts data");
       const chartsData = (payload as RefreshData).data;
 
-      for (var i=0; i<chartsData.length; i++) {
-        const method = chartsData[i];
+      for (var i = 0; i < chartsData.length; i++) {
+        // new series can be different from old ones, so all old series should be deleted
         while (this.charts[i].series.length > 1) {
-            this.charts[i].delSeries(1);
+          this.charts[i].delSeries(1);
         }
         this.charts[i].delSeries(0);
 
+        // sets x axis ticks and converts them to milliseconds and then to readable datetime format
+        const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}");
         chartsData[i].series[0].value = (_, rawValue) => {
-            const data = new Date(rawValue * 1000);
-            return uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}")(data);
+          return formatter(new Date(rawValue * 1000));
         };
 
+        // configures series and add them to the chart
         for (const series of chartsData[i].series) {
-            const color = randomColor();
-            series.stroke = color;
-            series.paths = (u) => null;
-            series.points = {
-                space: 0,
-                fill: color,
-            };
-            this.charts[i].addSeries(series);
+          const color = randomColor();
+          series.stroke = color;
+          series.paths = (_) => null;
+          series.points = {
+            space: 0,
+            fill: color,
+          };
+          this.charts[i].addSeries(series);
         }
 
         this.charts[i].setData(chartsData[i].data);
@@ -69,7 +71,10 @@ const ChartsHook = {
 };
 
 function randomColor(): string {
-  return `#${randomHexNumber(64, 255)}${randomHexNumber(64, 255)}${randomHexNumber(64, 255)}`;
+  return `#${randomHexNumber(64, 255)}${randomHexNumber(
+    64,
+    255
+  )}${randomHexNumber(64, 255)}`;
 }
 
 function randomHexNumber(min: number, max: number): string {

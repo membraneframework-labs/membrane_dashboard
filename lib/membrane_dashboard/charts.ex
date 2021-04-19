@@ -25,7 +25,7 @@ defmodule Membrane.Dashboard.Charts do
   Queries database to get data appropriate for uPlot. Returns all data for all given methods and time interval
   between 'time_from' and 'time_to'.
   """
-  @spec query(list(String.t()), non_neg_integer(), non_neg_integer()) :: {:ok, %{String.t() => chart_data_t()}}
+  @spec query(list(String.t()), non_neg_integer(), non_neg_integer()) :: {:ok, list(chart_data_t())}
   def query(methods, time_from, time_to) do
     charts_data =
       methods
@@ -79,13 +79,17 @@ defmodule Membrane.Dashboard.Charts do
   # returns list of tuples, where every tuple contains information about one pipeline path
   # tuples are in format: {path, data}, where data is a list with values for every timestamp in 'interval'
   defp to_series(rows, interval) do
-    rows =
-      rows
-      |> Enum.group_by(fn [_time, path, _size] -> path end, fn [time, _path, size] -> {time, size} end)
-      |> Enum.map(fn {path, data} -> {path, group_by_time(data)} end)
-      |> Enum.map(fn {path, data} -> {path, get_max_value_for_every_timestamp(data)} end)
-      |> Enum.map(fn {path, data} -> {path, Enum.into(data, %{})} end)
-      |> Enum.map(fn {path, data} -> {path, fill_with_nils(data, interval)} end)
+    rows
+    |> Enum.group_by(fn [_time, path, _size] -> path end, fn [time, _path, size] -> {time, size} end)
+    |> Enum.map(fn {path, data} ->
+      data =
+        data
+        |> group_by_time()
+        |> get_max_value_for_every_timestamp()
+        |> Enum.into(%{})
+        |> fill_with_nils(interval)
+      {path, data}
+    end)
   end
 
   # receives list of all tuples {time, buffer_size} for one pipeline path

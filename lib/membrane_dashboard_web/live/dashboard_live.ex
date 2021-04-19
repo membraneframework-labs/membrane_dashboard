@@ -55,8 +55,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
     with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
-      {:noreply,
-       push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: from, to: to}))}
+      {:noreply, push_patch_with_params(socket, %{from: from, to: to})}
     else
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
@@ -64,7 +63,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      {:noreply, push_patch(socket, to: Routes.live_path(socket, __MODULE__, %{from: now(-60*minutes_as_int), to: now()}))}
+      {:noreply, push_patch_with_params(socket, %{from: now(-60*minutes_as_int), to: now()})}
     else
       _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
     end
@@ -101,11 +100,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     do: {:ok, {socket.assigns.time_from, socket.assigns.time_to}}
 
   # returns pair of UNIX time values from DateTime in ISO 8601 format
-  defp parse_time_range(time_from, time_to) do
-    with [{:ok, date_time_from, _offset}, {:ok, date_time_to, _offset}] <- [time_from, time_to] |> Enum.map(&DateTime.from_iso8601/1),
-         [from, to] <- [date_time_from, date_time_to] |> Enum.map(&(DateTime.to_unix(&1, :milliseconds))) do
-      if to > from do
-        {:ok, {from, to}}
+  defp parse_time_range(from, to) do
+    with [{:ok, from, _offset}, {:ok, to, _offset}] <- [from, to] |> Enum.map(&DateTime.from_iso8601/1),
+         [unix_from, unix_to] <- [from, to] |> Enum.map(&(DateTime.to_unix(&1, :milliseconds))) do
+      if unix_to > unix_from do
+        {:ok, {unix_from, unix_to}}
       else
         {:error, "\"from\" should be before \"to\""}
       end
@@ -113,4 +112,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       _ -> {:error, "Invalid time range format"}
     end
   end
+
+  # executes push_patch/2 function with given 'params' to invoke handle_params/3
+  defp push_patch_with_params(socket, params), do:
+    push_patch(socket, to: Routes.live_path(socket, __MODULE__, params))
 end
