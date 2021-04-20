@@ -53,16 +53,14 @@ defmodule Membrane.Dashboard.Dagre do
     stopped working.
   """
 
+  import Membrane.Dashboard.Helpers
+
   alias Membrane.Dashboard.Repo
 
   require Logger
 
-  @type time_interval_t :: non_neg_integer()
-
-  @interval_pattern Regex.compile!("([0-9]+)(s|m|h|d|M|y)")
-
-  @spec query_dagre(time_interval_t(), time_interval_t()) :: {:ok, any()} | {:error, any()}
-  def query_dagre(time_from, time_to) do
+  @spec query(non_neg_integer(), non_neg_integer()) :: {:ok, any()} | {:error, any()}
+  def query(time_from, time_to) do
     result =
       """
       SELECT parent_path, l.from, l.to, pad_from, pad_to FROM links l WHERE time BETWEEN \
@@ -91,32 +89,5 @@ defmodule Membrane.Dashboard.Dagre do
         pad_to: pad_to
       }
     end)
-  end
-
-  defp parse_time(time) when is_number(time),
-    do: Membrane.Dashboard.Helpers.add_to_beginning_of_time(time)
-
-  defp parse_time("now"), do: DateTime.utc_now()
-
-  defp parse_time("now-" <> interval) do
-    time = parse_interval(interval)
-
-    DateTime.utc_now() |> DateTime.add(time, :second)
-  end
-
-  defp parse_interval(interval) do
-    [_, time, unit] = Regex.run(@interval_pattern, interval)
-
-    multiplier =
-      case unit do
-        "s" -> 1
-        "m" -> 60
-        "h" -> 60 * 60
-        "d" -> 60 * 60 * 24
-        "M" -> 60 * 60 * 24 * 30
-        "y" -> 60 * 60 * 24 * 365
-      end
-
-    String.to_integer(time) * multiplier
   end
 end

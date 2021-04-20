@@ -14,6 +14,7 @@ import "../css/app.scss";
 import "phoenix_html";
 
 import DagreHook from "./hooks/DagreHook";
+import ChartsHook from "./hooks/ChartsHook";
 import { LiveSocket } from "phoenix_live_view";
 import { Socket } from "phoenix";
 import topbar from "topbar";
@@ -26,6 +27,7 @@ declare global {
 
 const Hooks = {
   Dagre: DagreHook,
+  Charts: ChartsHook,
 };
 
 let csrfToken = document
