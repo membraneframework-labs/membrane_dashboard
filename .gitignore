@@ -33,5 +33,5 @@ npm-debug.log
 # this depending on your deployment strategy.
 /priv/static/
 
-# unnecessary files created by macOS
+# Unnecessary files created by macOS.
 *.DS_Store

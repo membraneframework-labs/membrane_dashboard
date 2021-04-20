@@ -98,6 +98,19 @@
   padding: 10px;
 }
 
+#accuracy {
+  width: 100px;
+  margin-right: 5px;
+}
+
+#accuracy-unit {
+  display: inline;
+}
+
+.AccuracyInput {
+  display: block;
+}
+
 .Charts {
   height: 45%;
   width: 100%;

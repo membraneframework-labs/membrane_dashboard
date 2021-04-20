@@ -39,20 +39,20 @@ const ChartsHook = {
       console.log("Received charts data");
       const chartsData = (payload as RefreshData).data;
 
-      for (var i = 0; i < chartsData.length; i++) {
+      for (let i = 0; i < chartsData.length; i++) {
         // new series can be different from old ones, so all old series should be deleted
-        while (this.charts[i].series.length > 1) {
-          this.charts[i].delSeries(1);
+        while (this.charts[i].series.length > 0) {
+          this.charts[i].delSeries(this.charts[i].series.length - 1);
         }
-        this.charts[i].delSeries(0);
 
-        // sets x axis ticks and converts them to milliseconds and then to readable datetime format
+        // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
+        // is multiplied by 1000
         const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}");
         chartsData[i].series[0].value = (_, rawValue) => {
           return formatter(new Date(rawValue * 1000));
         };
 
-        // configures series and add them to the chart
+        // configures series and adds them to the chart
         for (const series of chartsData[i].series) {
           const color = randomColor();
           series.stroke = color;
@@ -71,10 +71,8 @@ const ChartsHook = {
 };
 
 function randomColor(): string {
-  return `#${randomHexNumber(64, 255)}${randomHexNumber(
-    64,
-    255
-  )}${randomHexNumber(64, 255)}`;
+  const [a, b, c] = ["", "", ""].map((_) => randomHexNumber(64, 255));
+  return `#${a}${b}${c}`;
 }
 
 function randomHexNumber(min: number, max: number): string {
