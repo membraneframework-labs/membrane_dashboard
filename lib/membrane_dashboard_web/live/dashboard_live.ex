@@ -97,17 +97,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def format_time(time),
     do: time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
 
-  @doc """
-  Having accuracy and number of methods, returns expected rendering time as string ready to put to html.leex file.
-  Based on very limited tests, so not too precise.
-  """
-  @spec expected_render_time(non_neg_integer(), list(String.t())) :: String.t()
-  def expected_render_time(accuracy, methods) do
-    min_expected = 50 * length(methods) / accuracy
-    max_expected = 2 * min_expected
-    "#{Float.round(min_expected, 2)} - #{Float.round(max_expected, 2)}"
-  end
-
   # returns current UNIX time with optional offset
   defp now(offset \\ 0) do
     DateTime.utc_now()

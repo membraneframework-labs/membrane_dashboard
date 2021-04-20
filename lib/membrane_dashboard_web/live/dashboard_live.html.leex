@@ -13,7 +13,7 @@
   <form phx-change="validate-accuracy" phx-submit="apply-accuracy">
     <div class="AccuracyInput">
       <label>Accuracy</label>
-      <h6>For current accuracy rendering charts for 1 hour for 1 pipeline can take around <%= expected_render_time(@accuracy, @methods) %> seconds.</h6>
+      <h6>Be aware that the better accuracy, the longer rendering time.</h6>
       <input id="accuracy" type="number" value="<%= @accuracy %>" name="accuracy" phx-debounce="blur"/>
       <div id="accuracy-unit">ms</div>
     </div>

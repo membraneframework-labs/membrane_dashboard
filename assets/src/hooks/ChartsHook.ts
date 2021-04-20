@@ -41,8 +41,8 @@ const ChartsHook = {
 
       for (let i = 0; i < chartsData.length; i++) {
         // new series can be different from old ones, so all old series should be deleted
-        while (this.charts[i].series.length > 0) {
-          this.charts[i].delSeries(this.charts[i].series.length - 1);
+        for (let j = this.charts[i].series.length - 1; j >= 0; j--) {
+          this.charts[i].delSeries(j);
         }
 
         // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
