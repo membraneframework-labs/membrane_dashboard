@@ -15,15 +15,16 @@ defmodule Membrane.Dashboard.Charts do
   alias Membrane.Dashboard.Repo
 
   @type chart_data_t :: %{
-    series: list(%{label: String.t()}),
-    data: list(list(integer()))
-  }
+          series: list(%{label: String.t()}),
+          data: list(list(integer()))
+        }
 
   @doc """
   Queries database to get data appropriate for uPlot. Returns data for all given methods, time interval
   between 'time_from' and 'time_to' and given 'accuracy'.
   """
-  @spec query(list(String.t()), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, list(chart_data_t())}
+  @spec query(list(String.t()), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, list(chart_data_t())}
   def query(methods, time_from, time_to, accuracy) do
     charts_data =
       methods
@@ -33,9 +34,11 @@ defmodule Membrane.Dashboard.Charts do
   end
 
   # returns data for one method for the given time interval and accuracy (all in milliseconds)
-  @spec one_chart_query(String.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: chart_data_t()
+  @spec one_chart_query(String.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          chart_data_t()
   defp one_chart_query(method, time_from, time_to, accuracy) do
     accuracy_in_seconds = accuracy / 1000
+
     result =
       """
       SELECT floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
@@ -53,6 +56,7 @@ defmodule Membrane.Dashboard.Charts do
 
     interval = create_interval(time_from, time_to, accuracy_in_seconds)
     data_by_paths = to_series(rows, interval)
+
     chart_data = %{
       series: extract_opt_series(data_by_paths),
       data: extract_data(interval, data_by_paths)
@@ -78,7 +82,9 @@ defmodule Membrane.Dashboard.Charts do
   # tuples are in format: {path, data}, where data is a list with values for every timestamp in 'interval'
   defp to_series(rows, interval) do
     rows
-    |> Enum.group_by(fn [_time, path, _size] -> path end, fn [time, _path, size] -> {time, size} end)
+    |> Enum.group_by(fn [_time, path, _size] -> path end, fn [time, _path, size] ->
+      {time, size}
+    end)
     |> Enum.map(fn {path, data} ->
       data =
         data
@@ -86,6 +92,7 @@ defmodule Membrane.Dashboard.Charts do
         |> get_max_value_for_every_timestamp()
         |> Enum.into(%{})
         |> fill_with_nils(interval)
+
       {path, data}
     end)
   end
@@ -101,7 +108,7 @@ defmodule Membrane.Dashboard.Charts do
 
   # to put data to uPlot, it is necessary to fill every gap in data by nils
   defp fill_with_nils(path_data, interval),
-    do: interval |> Enum.map(&(path_data[&1]))
+    do: interval |> Enum.map(&path_data[&1])
 
   # returns list of maps serializable to Series objects in uPlot
   # that list will be used to create legend for uPlot

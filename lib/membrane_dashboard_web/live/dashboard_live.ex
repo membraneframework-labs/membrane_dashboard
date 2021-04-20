@@ -31,7 +31,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          {:ok, accuracy} <- extract_accuracy(params, socket),
          {:ok, dagre} <- Dagre.query(from, to),
          {:ok, charts} <- Charts.query(socket.assigns.methods, from, to, accuracy) do
-
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
 
@@ -63,7 +62,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      {:noreply, push_patch_with_params(socket, %{from: now(-60*minutes_as_int), to: now()})}
+      {:noreply, push_patch_with_params(socket, %{from: now(-60 * minutes_as_int), to: now()})}
     else
       _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
     end
@@ -132,8 +131,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   # returns pair of UNIX time values from DateTime in ISO 8601 format
   defp parse_time_range(from, to) do
-    with [{:ok, from, _offset}, {:ok, to, _offset}] <- [from, to] |> Enum.map(&DateTime.from_iso8601/1),
-         [unix_from, unix_to] <- [from, to] |> Enum.map(&(DateTime.to_unix(&1, :milliseconds))) do
+    with [{:ok, from, _offset}, {:ok, to, _offset}] <-
+           [from, to] |> Enum.map(&DateTime.from_iso8601/1),
+         [unix_from, unix_to] <- [from, to] |> Enum.map(&DateTime.to_unix(&1, :milliseconds)) do
       if unix_to > unix_from do
         {:ok, {unix_from, unix_to}}
       else
@@ -147,10 +147,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # checks whether the accuracy is a positive integer
   defp check_accuracy(accuracy) do
     {int, rest} = Integer.parse(accuracy)
+
     cond do
-      int < 1    -> {:error, "Accuracy have to be a positive number"}
+      int < 1 -> {:error, "Accuracy have to be a positive number"}
       rest != "" -> {:error, "Accuracy have to be an integer"}
-      true       -> {:ok, int}
+      true -> {:ok, int}
     end
   end
 
