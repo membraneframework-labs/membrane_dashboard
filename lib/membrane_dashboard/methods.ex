@@ -18,8 +18,11 @@ defmodule Membrane.Dashboard.Methods do
       """
       |> Repo.query()
 
-    {:ok, %Postgrex.Result{rows: rows}} = result
-    methods = List.flatten(rows)
-    {:ok, methods}
+    with {:ok, %Postgrex.Result{rows: rows}} <- result do
+      methods = List.flatten(rows)
+      {:ok, methods}
+    else
+      _ -> {:ok, []}
+    end
   end
 end

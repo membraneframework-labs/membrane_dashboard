@@ -52,17 +52,19 @@ defmodule Membrane.Dashboard.Charts do
       """
       |> Repo.query()
 
-    {:ok, %Postgrex.Result{rows: rows}} = result
+    with {:ok, %Postgrex.Result{rows: rows}} <- result do
+      interval = create_interval(time_from, time_to, accuracy_in_seconds)
+      data_by_paths = to_series(rows, interval)
 
-    interval = create_interval(time_from, time_to, accuracy_in_seconds)
-    data_by_paths = to_series(rows, interval)
+      chart_data = %{
+        series: extract_opt_series(data_by_paths),
+        data: extract_data(interval, data_by_paths)
+      }
 
-    chart_data = %{
-      series: extract_opt_series(data_by_paths),
-      data: extract_data(interval, data_by_paths)
-    }
-
-    chart_data
+      chart_data
+    else
+      _ -> %{series: [], data: [[]]}
+    end
   end
 
   # time in uPlot have to be discrete, so every event from database will land in one specific timestamp from returned interval

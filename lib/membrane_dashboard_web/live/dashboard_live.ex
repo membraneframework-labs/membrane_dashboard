@@ -6,12 +6,14 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   @initial_time_offset 300
   @initial_accuracy 10
+  @update_time 3000
 
   # initial time range is the last '@initial_time_offset' seconds
   @impl true
   def mount(_params, _session, socket) do
     {:ok, methods} = Methods.query()
     send(self(), {:init_data, methods})
+    Process.send_after(self(), :update, @update_time)
 
     {:ok,
      assign(socket,
@@ -19,7 +21,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
        methods: methods,
        time_from: now(-@initial_time_offset),
        time_to: now(),
-       accuracy: @initial_accuracy
+       accuracy: @initial_accuracy,
+       update: true
      )}
   end
 
@@ -29,12 +32,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     with true <- connected?(socket),
          {:ok, {from, to}} <- extract_time_range(params, socket),
          {:ok, accuracy} <- extract_accuracy(params, socket),
+         {:ok, update} <- extract_live_update_status(params, socket),
          {:ok, dagre} <- Dagre.query(from, to),
          {:ok, charts} <- Charts.query(socket.assigns.methods, from, to, accuracy) do
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
 
-      {:noreply, assign(socket, time_from: from, time_to: to, accuracy: accuracy)}
+      {:noreply, assign(socket, time_from: from, time_to: to, accuracy: accuracy, update: update)}
     else
       _ -> {:noreply, socket}
     end
@@ -51,10 +55,20 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_info({:charts_data, data}, socket),
     do: {:noreply, push_event(socket, "charts_data", %{data: data})}
 
+  def handle_info(:update, socket) do
+    Process.send_after(self(), :update, @update_time)
+
+    if socket.assigns.update do
+      {:noreply, push_patch_with_params(socket, %{from: socket.assigns.time_from, to: now()})}
+    else
+      {:noreply, socket}
+    end
+  end
+
   @impl true
   def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
     with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
-      {:noreply, push_patch_with_params(socket, %{from: from, to: to})}
+      {:noreply, push_patch_with_params(socket, %{from: from, to: to, update: false})}
     else
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
@@ -62,7 +76,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      {:noreply, push_patch_with_params(socket, %{from: now(-60 * minutes_as_int), to: now()})}
+      {:noreply,
+       push_patch_with_params(socket, %{from: now(-60 * minutes_as_int), to: now(), update: true})}
     else
       _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
     end
@@ -72,12 +87,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     with {:ok, accuracy} <- check_accuracy(accuracy) do
       {:noreply, push_patch_with_params(socket, %{accuracy: accuracy})}
     else
-      {:error, reason} -> {:noreply, socket}
+      {:error, _reason} -> {:noreply, socket}
     end
   end
 
   def handle_event("validate-accuracy", %{"accuracy" => accuracy}, socket) do
-    with {:ok, accuracy} <- check_accuracy(accuracy) do
+    with {:ok, _accuracy} <- check_accuracy(accuracy) do
       {:noreply, socket}
     else
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
@@ -101,7 +116,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   defp now(offset \\ 0) do
     DateTime.utc_now()
     |> DateTime.add(offset)
-    |> DateTime.to_unix(:milliseconds)
+    |> DateTime.to_unix(:millisecond)
   end
 
   # returns pair of UNIX time values made from strings in params or extracted from assigns in socket
@@ -117,6 +132,17 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   defp extract_accuracy(_params, socket),
     do: {:ok, socket.assigns.accuracy}
+
+  # returns information whether the charts should be updated in real time
+  defp extract_live_update_status(%{"update" => update}, _socket) do
+    case update do
+      "true" -> {:ok, true}
+      _ -> {:ok, false}
+    end
+  end
+
+  defp extract_live_update_status(_params, socket),
+    do: {:ok, socket.assigns.update}
 
   # returns pair of UNIX time values from DateTime in ISO 8601 format
   defp parse_time_range(from, to) do

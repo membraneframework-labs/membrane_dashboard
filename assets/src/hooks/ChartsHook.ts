@@ -5,6 +5,7 @@ import { createCharts } from "../utils/charts";
 
 type Hook = ViewHookInterface & {
   charts: uPlot[];
+  data: AlignedData[];
 };
 
 interface ChartData {
@@ -24,6 +25,7 @@ const ChartsHook = {
   mounted(this: Hook) {
     console.log("Mounting charts");
     this.charts = [];
+    this.data = [];
 
     // creating empty charts with proper names and sizes
     this.handleEvent("init_data", (payload) => {
@@ -38,8 +40,11 @@ const ChartsHook = {
     this.handleEvent("charts_data", (payload) => {
       console.log("Received charts data");
       const chartsData = (payload as RefreshData).data;
+      console.log(this.data);
 
       for (let i = 0; i < chartsData.length; i++) {
+        console.log(this.charts[i].data);
+
         // new series can be different from old ones, so all old series should be deleted
         for (let j = this.charts[i].series.length - 1; j >= 0; j--) {
           this.charts[i].delSeries(j);
@@ -65,6 +70,7 @@ const ChartsHook = {
         }
 
         this.charts[i].setData(chartsData[i].data);
+        this.data[i] = chartsData[i].data;
       }
     });
   },
