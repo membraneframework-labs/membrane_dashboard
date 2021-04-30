@@ -4,7 +4,7 @@ defmodule Membrane.Dashboard.Helpers do
   @doc """
   Receives UNIX time in milliseconds add returns DateTime (appropriate format for SQL queries).
   """
-  @spec add_to_beginning_of_time(non_neg_integer()) :: DateTime.t()
+  @spec parse_time(non_neg_integer()) :: DateTime.t()
   def parse_time(time) when is_number(time),
     do: Membrane.Dashboard.Helpers.add_to_beginning_of_time(time)
 

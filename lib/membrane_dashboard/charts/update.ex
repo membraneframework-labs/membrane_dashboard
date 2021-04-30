@@ -1,0 +1,214 @@
+defmodule Membrane.Dashboard.Charts.Update do
+  @moduledoc """
+  Module responsible for preparing data for uPlot charts when they are being updated.
+
+  Example (showing last 5 minutes of one chart data)
+
+  -305s  -300s                                -5s        now
+     _____________________________________________________
+    |                                          |          |
+    |                Old data                  |          |
+    |__________________________________________| New data |
+           |          New series data          |          |
+           |___________________________________|__________|
+                             |
+                             |
+                             |
+                             V
+            ______________________________________________
+           |                                              |
+           |                                              |
+           |               Updated data                   |
+           |                                              |
+           |______________________________________________|
+
+
+  Steps needed for every chart to update data:
+  1. Query database to get all data from last 5 seconds.
+  2. Extract new paths (of pipeline elements) from the result of query (all paths that appeared for the first time in the last 5 seconds).
+  3. Create list of uPlot Series objects with `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
+  4. Every path need to have value for every timestamp. Thus new series data for the time before update is filled with nils.
+  5. Extract new data (data for all paths for last 5 seconds; as list of lists) from database query result.
+  6. Truncate old data - delete its first 5 seconds (to maintain visibility of just last x minutes).
+  7. Concatenate truncated old data and new series data - it creates full data for the time before update.
+  8. Append new data to every path data.
+  9. Create map (of type `update_data_t`) serializable to ChartData in ChartsHook.
+  """
+
+  import Membrane.Dashboard.Charts.Helpers
+
+  alias Membrane.Dashboard.Repo
+
+  @type update_data_t :: %{
+          series: [%{label: String.t()}],
+          data: [[integer()]]
+        }
+
+  @doc """
+  Returns:
+    - update data for uPlot, where new data is from between `time_from` and `time_to`. Consists of new series and full data for charts;
+    - full data as 3d list;
+    - list of all paths.
+  """
+  @spec query(Phoenix.LiveView.Socket.t(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, {[update_data_t()], [[[non_neg_integer()]]], [[String.t()]]}}
+  def query(socket, time_from, time_to) do
+    last_time_to = socket.assigns.time_to
+
+    with {:ok, updated_data} <-
+           query_recursively(
+             socket.assigns.methods,
+             socket.assigns.paths,
+             socket.assigns.data,
+             socket.assigns.accuracy,
+             time_from,
+             last_time_to,
+             time_to
+           ) do
+      {:ok, unzip3(updated_data)}
+    else
+      error -> error
+    end
+  end
+
+  # Methods, paths and old data are lists of the same size. One element of the list has information about one chart,
+  # so one call of this function updates data for one chart.
+  defp query_recursively([], [], [], _accuracy, _time_from, _last_time_to, _time_to),
+    do: {:ok, []}
+
+  defp query_recursively(
+         [method | methods],
+         [method_paths | paths],
+         [method_data | data],
+         accuracy,
+         time_from,
+         last_time_to,
+         time_to
+       ) do
+    with {:ok, method_updated_data} <-
+           one_chart_query(
+             method,
+             method_paths,
+             method_data,
+             accuracy,
+             time_from,
+             last_time_to,
+             time_to
+           ),
+         {:ok, updated_data} <-
+           query_recursively(methods, paths, data, accuracy, time_from, last_time_to, time_to) do
+      {:ok, [method_updated_data | updated_data]}
+    else
+      error -> error
+    end
+  end
+
+  # Queries database and prepares data for one chart.
+  defp one_chart_query(method, paths, old_data, accuracy, time_from, last_time_to, time_to) do
+    update_from = last_time_to + accuracy
+
+    with {:ok, %Postgrex.Result{rows: rows}} <-
+           create_sql_query(accuracy, update_from, time_to, method) |> Repo.query() do
+      new_paths = get_new_paths(paths, rows)
+
+      {new_series, new_series_data} =
+        create_new_series(accuracy, time_from, last_time_to, new_paths)
+
+      all_paths = paths ++ new_paths
+      new_data = extract_new_data(accuracy, update_from, time_to, rows, all_paths)
+
+      [old_timestamps | old_values] = old_data
+
+      truncated_timestamps =
+        old_timestamps
+        |> Enum.drop_while(fn timestamp -> timestamp < to_seconds(time_from) end)
+
+      to_drop = length(old_timestamps) - length(truncated_timestamps)
+
+      truncated_old_values =
+        old_values
+        |> Enum.map(fn one_series_values -> Enum.drop(one_series_values, to_drop) end)
+
+      truncated_old_data = [truncated_timestamps | truncated_old_values]
+
+      updated_data = append_data(truncated_old_data ++ new_series_data, new_data)
+
+      chart_data = %{
+        series: new_series,
+        data: updated_data
+      }
+
+      {:ok, {chart_data, updated_data, all_paths}}
+    else
+      {:error, _reason} -> {:error, "Cannot fetch update data for charts"}
+    end
+  end
+
+  # Returns paths from database query result which were not present before update.
+  defp get_new_paths(old_paths, rows) do
+    rows
+    |> Enum.map(fn [_time, path, _size] -> path end)
+    |> Enum.uniq()
+    |> Enum.filter(fn path -> not Enum.member?(old_paths, path) end)
+  end
+
+  # Returns pair with:
+  # - list of uPlot Series with labels (maps: %{label: path_name});
+  # - list filled with nils for every new series (so list of lists).
+  defp create_new_series(accuracy, time_from, time_to, new_paths) do
+    series =
+      new_paths
+      |> Enum.map(fn path_name -> [{:label, path_name}] end)
+      |> Enum.map(&Enum.into(&1, %{}))
+
+    interval = create_interval(time_from, time_to, accuracy)
+
+    all_nils = get_all_nils(interval)
+
+    data =
+      new_paths
+      |> Enum.map(fn _path -> all_nils end)
+
+    {series, data}
+  end
+
+  # Creates list of values for every path in `paths`. Such list consists of values for every timestamp between
+  # `time_from` and `time_to` with given `accuracy`. Values are extracted from `rows` - result of database query.
+  # Returns list of lists:
+  # - first list contains timestamps;
+  # - next lists contains paths data.
+  defp extract_new_data(accuracy, time_from, time_to, rows, paths) do
+    interval = create_interval(time_from, time_to, accuracy)
+
+    data_by_paths =
+      rows
+      |> to_series(interval)
+      |> Enum.into(%{})
+
+    all_nils = get_all_nils(interval)
+
+    data =
+      paths
+      |> Enum.map(fn path -> Map.get(data_by_paths, path, all_nils) end)
+
+    [interval | data]
+  end
+
+  # Returns list of nils: one `nil` for every timestamp in the `interval`.
+  defp get_all_nils(interval),
+    do: for(_ <- 1..length(interval), do: nil)
+
+  # Appends new data for every series.
+  defp append_data([], []),
+    do: []
+
+  defp append_data([one_series_data | rest], [new_one_series_data | new_rest]),
+    do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
+
+  # From [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}.
+  defp unzip3(list) do
+    [0, 1, 2]
+    |> Enum.map(fn i -> Enum.map(list, &elem(&1, i)) end)
+    |> List.to_tuple()
+  end
+end

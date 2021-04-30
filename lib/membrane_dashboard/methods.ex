@@ -1,6 +1,6 @@
 defmodule Membrane.Dashboard.Methods do
   @moduledoc """
-  Module responsible for extracting list of methods for which input buffer size were measured and put in TimescaleDB.
+  Module responsible for extracting list of methods for which input buffer size were measured and put to TimescaleDB.
   """
 
   alias Membrane.Dashboard.Repo
@@ -8,7 +8,7 @@ defmodule Membrane.Dashboard.Methods do
   @doc """
   Queries database to get list of methods from measurements table.
   """
-  @spec query() :: {:ok, list(String.t())}
+  @spec query() :: {:ok, [String.t()]}
   def query() do
     result =
       """
@@ -19,8 +19,7 @@ defmodule Membrane.Dashboard.Methods do
       |> Repo.query()
 
     with {:ok, %Postgrex.Result{rows: rows}} <- result do
-      methods = List.flatten(rows)
-      {:ok, methods}
+      {:ok, List.flatten(rows)}
     else
       _ -> {:ok, []}
     end

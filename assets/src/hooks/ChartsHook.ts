@@ -8,13 +8,13 @@ type Hook = ViewHookInterface & {
   data: AlignedData[];
 };
 
+interface InitData {
+  data: string[];
+}
+
 interface ChartData {
   series: Series[];
   data: AlignedData;
-}
-
-interface InitData {
-  data: string[];
 }
 
 interface RefreshData {
@@ -25,10 +25,9 @@ const ChartsHook = {
   mounted(this: Hook) {
     console.log("Mounting charts");
     this.charts = [];
-    this.data = [];
 
     // creating empty charts with proper names and sizes
-    this.handleEvent("init_data", (payload) => {
+    this.handleEvent("charts_init", (payload) => {
       const width = this.el.scrollWidth - 20;
       const methods = (payload as InitData).data;
       for (const method of methods) {
@@ -37,14 +36,12 @@ const ChartsHook = {
       }
     });
 
+    // full charts update
     this.handleEvent("charts_data", (payload) => {
       console.log("Received charts data");
       const chartsData = (payload as RefreshData).data;
-      console.log(this.data);
 
       for (let i = 0; i < chartsData.length; i++) {
-        console.log(this.charts[i].data);
-
         // new series can be different from old ones, so all old series should be deleted
         for (let j = this.charts[i].series.length - 1; j >= 0; j--) {
           this.charts[i].delSeries(j);
@@ -70,7 +67,27 @@ const ChartsHook = {
         }
 
         this.charts[i].setData(chartsData[i].data);
-        this.data[i] = chartsData[i].data;
+      }
+    });
+
+    // live update patch
+    this.handleEvent("charts_update", (payload) => {
+      console.log("Received charts update data");
+      const chartsData = (payload as RefreshData).data;
+
+      for (let i = 0; i < chartsData.length; i++) {
+        // configures new series and adds them to the chart
+        for (const series of chartsData[i].series) {
+          const color = randomColor();
+          series.stroke = color;
+          series.paths = (_) => null;
+          series.points = {
+            space: 0,
+            fill: color,
+          };
+          this.charts[i].addSeries(series);
+        }
+        this.charts[i].setData(chartsData[i].data);
       }
     });
   },
