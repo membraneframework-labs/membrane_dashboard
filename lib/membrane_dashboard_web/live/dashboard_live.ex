@@ -6,6 +6,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
+  require Logger
+
   @initial_time_offset 300
   @initial_accuracy 10
   @update_time 5000
@@ -53,7 +55,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
         {:noreply, assign(socket, paths: paths, data: data, time_from: from, time_to: to)}
       else
-        _ -> {:noreply, socket}
+        {:error, reason} ->
+          Logger.error(reason)
+          {:noreply, socket}
+
+        _ ->
+          {:noreply, socket}
       end
     end
   end
@@ -85,7 +92,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update_range: update_range
        )}
     else
-      _ -> {:noreply, socket}
+      {:error, reason} ->
+        Logger.error(reason)
+        {:noreply, socket}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 

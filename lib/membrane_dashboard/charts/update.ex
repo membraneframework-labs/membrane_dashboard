@@ -66,13 +66,11 @@ defmodule Membrane.Dashboard.Charts.Update do
              time_to
            ) do
       {:ok, unzip3(updated_data)}
-    else
-      error -> error
     end
   end
 
-  # Methods, paths and old data are lists of the same size. One element of the list has information about one chart,
-  # so one call of this function updates data for one chart.
+  # methods, paths and old data are lists of the same size
+  # one element of the list has information about one chart so one call of this function updates data for one chart
   defp query_recursively([], [], [], _accuracy, _time_from, _last_time_to, _time_to),
     do: {:ok, []}
 
@@ -98,12 +96,10 @@ defmodule Membrane.Dashboard.Charts.Update do
          {:ok, updated_data} <-
            query_recursively(methods, paths, data, accuracy, time_from, last_time_to, time_to) do
       {:ok, [method_updated_data | updated_data]}
-    else
-      error -> error
     end
   end
 
-  # Queries database and prepares data for one chart.
+  # queries database and prepares data for one chart
   defp one_chart_query(method, paths, old_data, accuracy, time_from, last_time_to, time_to) do
     update_from = last_time_to + accuracy
 
@@ -144,7 +140,7 @@ defmodule Membrane.Dashboard.Charts.Update do
     end
   end
 
-  # Returns paths from database query result which were not present before update.
+  # returns paths from database query result which were not present before update
   defp get_new_paths(old_paths, rows) do
     rows
     |> Enum.map(fn [_time, path, _size] -> path end)
@@ -152,9 +148,9 @@ defmodule Membrane.Dashboard.Charts.Update do
     |> Enum.filter(fn path -> not Enum.member?(old_paths, path) end)
   end
 
-  # Returns pair with:
-  # - list of uPlot Series with labels (maps: %{label: path_name});
-  # - list filled with nils for every new series (so list of lists).
+  # returns pair with:
+  # - list of uPlot Series with labels (maps: %{label: path_name})
+  # - list filled with nils for every new series (so list of lists)
   defp create_new_series(accuracy, time_from, time_to, new_paths) do
     series =
       new_paths
@@ -172,11 +168,12 @@ defmodule Membrane.Dashboard.Charts.Update do
     {series, data}
   end
 
-  # Creates list of values for every path in `paths`. Such list consists of values for every timestamp between
-  # `time_from` and `time_to` with given `accuracy`. Values are extracted from `rows` - result of database query.
-  # Returns list of lists:
-  # - first list contains timestamps;
-  # - next lists contains paths data.
+  # creates list of values for every path in `paths`
+  # such list consists of values for every timestamp between `time_from` and `time_to` with given `accuracy`
+  # values are extracted from `rows` - result of database query
+  # returns list of lists:
+  # - first list contains timestamps
+  # - next lists contains paths data
   defp extract_new_data(accuracy, time_from, time_to, rows, paths) do
     interval = create_interval(time_from, time_to, accuracy)
 
@@ -194,18 +191,18 @@ defmodule Membrane.Dashboard.Charts.Update do
     [interval | data]
   end
 
-  # Returns list of nils: one `nil` for every timestamp in the `interval`.
+  # returns list of nils: one `nil` for every timestamp in the `interval`
   defp get_all_nils(interval),
     do: for(_ <- 1..length(interval), do: nil)
 
-  # Appends new data for every series.
+  # appends new data for every series
   defp append_data([], []),
     do: []
 
   defp append_data([one_series_data | rest], [new_one_series_data | new_rest]),
     do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
 
-  # From [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}.
+  # from [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}
   defp unzip3(list) do
     [0, 1, 2]
     |> Enum.map(fn i -> Enum.map(list, &elem(&1, i)) end)
