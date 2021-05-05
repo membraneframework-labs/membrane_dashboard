@@ -203,9 +203,15 @@ defmodule Membrane.Dashboard.Charts.Update do
     do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
 
   # from [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}
-  defp unzip3(list) do
-    [0, 1, 2]
-    |> Enum.map(fn i -> Enum.map(list, &elem(&1, i)) end)
-    |> List.to_tuple()
-  end
+  defp unzip3([]),
+    do: {[], [], []}
+
+  defp unzip3(list),
+    do: :lists.reverse(list) |> unzip3([], [], [])
+
+  defp unzip3([{el1, el2, el3} | reversed_list], list1, list2, list3),
+    do: unzip3(reversed_list, [el1 | list1], [el2 | list2], [el3 | list3])
+
+  defp unzip3([], list1, list2, list3),
+    do: {list1, list2, list3}
 end

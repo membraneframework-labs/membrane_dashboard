@@ -14,7 +14,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     """
       SELECT floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
       path,
-      value AS "value"
+      value
       FROM measurements m JOIN element_paths ep on m.element_path_id = ep.id
       WHERE
       time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and method = '#{method}'

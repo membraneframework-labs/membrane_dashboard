@@ -10,7 +10,6 @@ defmodule Membrane.Dashboard.Charts.Full do
     first list.
   """
 
-  import Membrane.Dashboard.Helpers
   import Membrane.Dashboard.Charts.Helpers
 
   alias Membrane.Dashboard.Repo
@@ -36,8 +35,6 @@ defmodule Membrane.Dashboard.Charts.Full do
   end
 
   # returns data for one method for the given time interval and `accuracy` (all in milliseconds)
-  @spec one_chart_query(String.t(), non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
-          chart_data_t()
   defp one_chart_query(method, time_from, time_to, accuracy) do
     with {:ok, %Postgrex.Result{rows: rows}} <-
            create_sql_query(accuracy, time_from, time_to, method) |> Repo.query() do
@@ -67,8 +64,7 @@ defmodule Membrane.Dashboard.Charts.Full do
   defp extract_opt_series(data_by_paths) do
     series =
       data_by_paths
-      |> Enum.map(fn {path, _data} -> [{:label, path}] end)
-      |> Enum.map(fn series -> Enum.into(series, %{}) end)
+      |> Enum.map(fn {path, _data} -> %{label: path} end)
 
     [%{label: "time"} | series]
   end
