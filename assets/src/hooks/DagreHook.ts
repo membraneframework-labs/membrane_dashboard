@@ -15,7 +15,6 @@ type Hook = ViewHookInterface & { graph: Graph };
 
 const DagreHook = {
   mounted(this: Hook) {
-    console.log("Mounting dagre");
     const width = this.el.scrollWidth - 20;
     const height = this.el.scrollHeight;
 
@@ -41,7 +40,6 @@ const DagreHook = {
     };
 
     this.handleEvent("dagre_data", (payload) => {
-      console.log("Received dagre data");
       const data = (payload as DagreData).data;
 
       const topLevelCombos =
@@ -49,13 +47,10 @@ const DagreHook = {
       this.pushEvent("top-level-combos", topLevelCombos);
 
       this.graph.data(data);
-      console.log("Started rendering dagre");
 
       this.graph.render();
-      console.log("Finished rendering dagre");
 
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
-      console.log("Changed size");
     });
 
     this.handleEvent("focus_combo", (payload) => {

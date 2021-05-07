@@ -20,8 +20,8 @@ You will need to provide your timescaledb configs in `config/config.exs` file.
 
 First install dependencies:
 ```bash
-npm ci --prefix ./assets
 mix deps.get
+npm ci --prefix ./assets
 ```
 
 And then run:
