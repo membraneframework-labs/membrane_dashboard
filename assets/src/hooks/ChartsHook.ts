@@ -23,7 +23,6 @@ interface RefreshData {
 
 const ChartsHook = {
   mounted(this: Hook) {
-    console.log("Mounting charts");
     this.charts = [];
 
     // creating empty charts with proper names and sizes
@@ -38,7 +37,6 @@ const ChartsHook = {
 
     // full charts update
     this.handleEvent("charts_data", (payload) => {
-      console.log("Received charts data");
       const chartsData = (payload as RefreshData).data;
 
       for (let i = 0; i < chartsData.length; i++) {
@@ -72,7 +70,6 @@ const ChartsHook = {
 
     // live update patch
     this.handleEvent("charts_update", (payload) => {
-      console.log("Received charts update data");
       const chartsData = (payload as RefreshData).data;
 
       for (let i = 0; i < chartsData.length; i++) {
