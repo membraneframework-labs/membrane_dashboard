@@ -6,9 +6,7 @@ It uses `membrane_timescaledb_reporter` for obtaining information about pipeline
 
 For now it supports:
 * displaying dependency diagram of pipeline's elements for given time range
-
-
-TODO: add grafana like charts for monitoring input buffers 
+* charts for monitoring input buffers with live update
 
 It is part of [Membrane Multimedia Framework](https://membraneframework.org).
 
@@ -16,17 +14,15 @@ It is part of [Membrane Multimedia Framework](https://membraneframework.org).
 
 Membrane dashboard is a simple Phoenix application utilizing live view components.
 
-You will need to provide your timescaledb configs in `config/config.exs` file.
-
 First install dependencies:
 ```bash
 mix deps.get
 npm ci --prefix ./assets
 ```
 
-And then run:
+And then run. You will need to provide your timescaledb configs as environment variables. For example:
 ```bash
-mix phx.server
+DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=localhost SECRET_KEY_BASE=uT0jyRQH9x5jCEYYpACumazKKQz62FWBNFjaX9IXwhzKvHkmP3jLZ75bClryU6Iv HOST=localhost mix phx.server
 ```
 
 The application will be available at address `http://localhost:4000`.
