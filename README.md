@@ -20,12 +20,21 @@ mix deps.get
 npm ci --prefix ./assets
 ```
 
-And then run. You will need to provide your timescaledb configs as environment variables. For example:
+To run the application you need to provide a few necessary environment variables:
+* for timescaleDB configuration (used by Ecto.Repo):
+    * DB_USER - username
+    * DB_PASS - password
+    * DB_NAME - database
+    * DB_HOST - hostname
+* server host:
+    * HOST - hostname to access the application
+
+Running example:
 ```bash
-DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=localhost SECRET_KEY_BASE=uT0jyRQH9x5jCEYYpACumazKKQz62FWBNFjaX9IXwhzKvHkmP3jLZ75bClryU6Iv HOST=localhost mix phx.server
+DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=localhost HOST=localhost mix phx.server
 ```
 
-The application will be available at address `http://localhost:4000`.
+Application uses port `4000`. If `HOST=localhost`, dashboard will be available at address `http://localhost:4000`.
 
 ## Copyright and License
 
