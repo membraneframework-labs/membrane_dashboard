@@ -1,6 +1,6 @@
 /* eslint new-cap: ["error", { "newIsCapExceptions": ["uPlot"] }] */
 
-import uPlot, { AlignedData } from "uPlot";
+import uPlot, { AlignedData } from "uplot";
 import { getXTicksConfig } from "../utils/chartsXTicksConfig";
 
 export function createCharts(

@@ -1,16 +1,9 @@
 import Config
 
 # Configure your database
-config :membrane_dashboard, Membrane.Dashboard.Repo,
-  username: "postgres",
-  password: "postgres",
-  database: "membrane_timescaledb_reporter",
-  hostname: "localhost",
-  show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+config :membrane_dashboard, Membrane.Dashboard.Repo, show_sensitive_data_on_connection_error: true
 
 config :membrane_dashboard, Membrane.DashboardWeb.Endpoint,
-  http: [port: 4000],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,

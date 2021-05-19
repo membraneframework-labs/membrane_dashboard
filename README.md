@@ -6,9 +6,7 @@ It uses `membrane_timescaledb_reporter` for obtaining information about pipeline
 
 For now it supports:
 * displaying dependency diagram of pipeline's elements for given time range
-
-
-TODO: add grafana like charts for monitoring input buffers 
+* charts for monitoring input buffers with live update
 
 It is part of [Membrane Multimedia Framework](https://membraneframework.org).
 
@@ -16,20 +14,27 @@ It is part of [Membrane Multimedia Framework](https://membraneframework.org).
 
 Membrane dashboard is a simple Phoenix application utilizing live view components.
 
-You will need to provide your timescaledb configs in `config/config.exs` file.
-
 First install dependencies:
 ```bash
 mix deps.get
 npm ci --prefix ./assets
 ```
 
-And then run:
+To run the application you need to provide a few necessary environment variables:
+* for timescaleDB configuration (used by Ecto.Repo):
+    * DB_USER - username
+    * DB_PASS - password
+    * DB_NAME - database
+    * DB_HOST - hostname
+* server host:
+    * HOST - hostname to access the application
+
+Running example:
 ```bash
-mix phx.server
+DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=localhost HOST=localhost mix phx.server
 ```
 
-The application will be available at address `http://localhost:4000`.
+Application uses port `4000`. If `HOST=localhost`, dashboard will be available at address `http://localhost:4000`.
 
 ## Copyright and License
 

@@ -1,4 +1,4 @@
-import uPlot, { AlignedData, Series } from "uPlot";
+import uPlot, { AlignedData, Series } from "uplot";
 
 import { ViewHookInterface } from "phoenix_live_view";
 import { createCharts } from "../utils/charts";
