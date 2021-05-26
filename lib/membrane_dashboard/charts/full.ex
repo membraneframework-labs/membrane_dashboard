@@ -2,11 +2,11 @@ defmodule Membrane.Dashboard.Charts.Full do
   @moduledoc """
   Module responsible for preparing data for uPlot charts when they are being entirely reloaded.
 
-  Every chart visualizes sizes of buffers found when processing one particular method in pipelines. Chart data returned 
+  Every chart visualizes one particular metric of pipelines. Chart data returned 
   by query is a list of maps (one for every chart) which consist of:
   - series - list of maps with labels. Used as legend in uPlot;
   - data - list of lists. Represents points on the chart. First list contains timestamps in UNIX time (x axis ticks).
-    Every next list have information about one pipeline path. Such list have max buffer size for every timestamp from
+    Every next list have information about one pipeline path. Such list have metric value for every timestamp from
     first list.
   """
 
@@ -20,24 +20,24 @@ defmodule Membrane.Dashboard.Charts.Full do
         }
 
   @doc """
-  Queries database to get data appropriate for uPlot. Returns data for all given methods, time interval
+  Queries database to get data appropriate for uPlot. Returns data for all given metrics, time interval
   between `time_from` and `time_to` and given `accuracy`.
   """
   @spec query([String.t()], non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
           {:ok, [chart_data_t()], [String.t()]}
-  def query(methods, time_from, time_to, accuracy) do
+  def query(metrics, time_from, time_to, accuracy) do
     {charts_data, paths} =
-      methods
+      metrics
       |> Enum.map(&one_chart_query(&1, time_from, time_to, accuracy))
       |> Enum.unzip()
 
     {:ok, charts_data, paths}
   end
 
-  # returns data for one method for the given time interval and `accuracy` (all in milliseconds)
-  defp one_chart_query(method, time_from, time_to, accuracy) do
+  # returns data for one metric for the given time interval and `accuracy` (all in milliseconds)
+  defp one_chart_query(metric, time_from, time_to, accuracy) do
     with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, time_from, time_to, method) |> Repo.query() do
+           create_sql_query(accuracy, time_from, time_to, metric) |> Repo.query() do
       interval = create_interval(time_from, time_to, accuracy)
       data_by_paths = to_series(rows, interval)
 
@@ -60,7 +60,7 @@ defmodule Membrane.Dashboard.Charts.Full do
 
   # returns list of maps serializable to Series objects in uPlot
   # that list will be used to create legend for uPlot
-  # example list: [%{label: "time"}, %{label: "pipeline@<0.584.0>/:realtimer_video/:input:"}, %{label: "pipeline@..."}]
+  # example list: [%{label: "time"}, %{label: "pipeline@12345@<0.584.0>/:realtimer_video/:input:"}, %{label: "pipeline@..."}]
   defp extract_opt_series(data_by_paths) do
     series =
       data_by_paths

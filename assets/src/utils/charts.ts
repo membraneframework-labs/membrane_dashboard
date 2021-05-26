@@ -6,7 +6,7 @@ import { getXTicksConfig } from "../utils/chartsXTicksConfig";
 export function createCharts(
   container: HTMLElement,
   width: number,
-  method: string
+  metric: string
 ): uPlot {
   const data: AlignedData = [[]];
 
@@ -14,7 +14,7 @@ export function createCharts(
     {
       width: width,
       height: 200,
-      title: `Input buffer size inside ${method}`,
+      title: `Input buffer size inside ${metric}`,
       id: "chart1",
       class: "my-chart",
       series: [],

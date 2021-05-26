@@ -1,7 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.{Dagre, Methods, Helpers}
+  alias Membrane.Dashboard.{Dagre, Metrics, Helpers}
   alias Membrane.Dashboard.Charts.Full, as: ChartsFull
   alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
@@ -15,20 +15,20 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # initially:
   # - time range is the last `@initial_time_offset` seconds
   # - live update is enabled
-  # - charts are created based on current methods in database
+  # - charts are created based on current metrics in database
   # - `paths` and `data` needed for live update have lists of empty lists
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, methods} = Methods.query()
-    empty_lists = for _method <- 1..length(methods), do: []
+    {:ok, metrics} = Metrics.query()
+    empty_lists = for _metric <- 1..length(metrics), do: []
 
-    send(self(), {:charts_init, methods})
+    send(self(), {:charts_init, metrics})
     Process.send_after(self(), :update, @update_time)
 
     {:ok,
      assign(socket,
        top_level_combos: nil,
-       methods: methods,
+       metrics: metrics,
        paths: empty_lists,
        data: empty_lists,
        time_from: now(-@initial_time_offset),
@@ -73,7 +73,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket),
          {:ok, dagre} <- Dagre.query(from, to),
-         {:ok, charts, paths} <- ChartsFull.query(socket.assigns.methods, from, to, accuracy) do
+         {:ok, charts, paths} <- ChartsFull.query(socket.assigns.metrics, from, to, accuracy) do
       send(self(), {:dagre_data, dagre})
       send(self(), {:charts_data, charts})
 
@@ -223,7 +223,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   # returns pair of UNIX time values from DateTime in ISO 8601 format
   defp parse_time_range(from, to) do
-    with [{:ok, from, _offset}, {:ok, to, _offset}] <-
+    with [{:ok, from, _from_offset}, {:ok, to, _to_offset}] <-
            [from, to] |> Enum.map(&DateTime.from_iso8601/1),
          [unix_from, unix_to] <- [from, to] |> Enum.map(&DateTime.to_unix(&1, :millisecond)) do
       if unix_to > unix_from do

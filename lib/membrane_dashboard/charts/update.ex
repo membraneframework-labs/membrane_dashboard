@@ -57,7 +57,7 @@ defmodule Membrane.Dashboard.Charts.Update do
 
     with {:ok, updated_data} <-
            query_recursively(
-             socket.assigns.methods,
+             socket.assigns.metrics,
              socket.assigns.paths,
              socket.assigns.data,
              socket.assigns.accuracy,
@@ -69,42 +69,42 @@ defmodule Membrane.Dashboard.Charts.Update do
     end
   end
 
-  # methods, paths and old data are lists of the same size
+  # metrics, paths and old data are lists of the same size
   # one element of the list has information about one chart so one call of this function updates data for one chart
   defp query_recursively([], [], [], _accuracy, _time_from, _last_time_to, _time_to),
     do: {:ok, []}
 
   defp query_recursively(
-         [method | methods],
-         [method_paths | paths],
-         [method_data | data],
+         [metric | metrics],
+         [metric_paths | paths],
+         [metric_data | data],
          accuracy,
          time_from,
          last_time_to,
          time_to
        ) do
-    with {:ok, method_updated_data} <-
+    with {:ok, metric_updated_data} <-
            one_chart_query(
-             method,
-             method_paths,
-             method_data,
+             metric,
+             metric_paths,
+             metric_data,
              accuracy,
              time_from,
              last_time_to,
              time_to
            ),
          {:ok, updated_data} <-
-           query_recursively(methods, paths, data, accuracy, time_from, last_time_to, time_to) do
-      {:ok, [method_updated_data | updated_data]}
+           query_recursively(metrics, paths, data, accuracy, time_from, last_time_to, time_to) do
+      {:ok, [metric_updated_data | updated_data]}
     end
   end
 
   # queries database and prepares data for one chart
-  defp one_chart_query(method, paths, old_data, accuracy, time_from, last_time_to, time_to) do
+  defp one_chart_query(metric, paths, old_data, accuracy, time_from, last_time_to, time_to) do
     update_from = last_time_to + accuracy
 
     with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, update_from, time_to, method) |> Repo.query() do
+           create_sql_query(accuracy, update_from, time_to, metric) |> Repo.query() do
       new_paths = get_new_paths(paths, rows)
 
       {new_series, new_series_data} =

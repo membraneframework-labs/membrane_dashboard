@@ -1,14 +1,14 @@
 defmodule Membrane.Dashboard.Charts.Helpers do
   @moduledoc """
-  Module has methods useful for Membrane.Dashboard.Charts.Full and Membrane.Dashboard.Charts.Update.
+  Module has functions useful for Membrane.Dashboard.Charts.Full and Membrane.Dashboard.Charts.Update.
   """
 
   import Membrane.Dashboard.Helpers
 
-  # returns query to select all measurements from database for given method, accuracy and time range (last two in milliseconds)
+  # returns query to select all measurements from database for given metric, accuracy and time range (last two in milliseconds)
   @spec create_sql_query(non_neg_integer(), non_neg_integer(), non_neg_integer(), String.t()) ::
           String.t()
-  def create_sql_query(accuracy, time_from, time_to, method) do
+  def create_sql_query(accuracy, time_from, time_to, metric) do
     accuracy_in_seconds = to_seconds(accuracy)
 
     """
@@ -17,7 +17,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
       value
       FROM measurements m JOIN element_paths ep on m.element_path_id = ep.id
       WHERE
-      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and method = '#{method}'
+      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and metric = '#{metric}'
       GROUP BY time, path, value
       ORDER BY time
     """
@@ -63,8 +63,8 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @spec to_series([[term()] | binary()] | nil, [float()]) :: [{String.t(), [non_neg_integer()]}]
   def to_series(rows, interval) do
     rows
-    |> Enum.group_by(fn [_time, path, _size] -> path end, fn [time, _path, size] ->
-      {time, size}
+    |> Enum.group_by(fn [_time, path, _value] -> path end, fn [time, _path, value] ->
+      {time, value}
     end)
     |> Enum.map(fn {path, data} ->
       data =
@@ -82,12 +82,12 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   defp apply_accuracy(time, accuracy),
     do: floor(time / (1000 * accuracy)) * accuracy
 
-  # receives list of all tuples {time, buffer_size} for one pipeline path
-  # groups buffer sizes by timestamps (there can be more than one buffer size per timestamp depending on `accuracy`)
+  # receives list of all tuples {time, value} for one pipeline path
+  # groups values by timestamps (there can be more than one value per timestamp depending on `accuracy`)
   defp group_by_time(path_data),
-    do: path_data |> Enum.group_by(fn {time, _size} -> time end, fn {_time, size} -> size end)
+    do: path_data |> Enum.group_by(fn {time, _value} -> time end, fn {_time, value} -> value end)
 
-  # extracts one maximal buffer size for every timestamp in passed pipeline path data
+  # extracts one maximal value for every timestamp in passed pipeline path data
   defp get_max_value_for_every_timestamp(path_data),
     do: path_data |> Enum.map(fn {time, time_group} -> {time, Enum.max(time_group)} end)
 

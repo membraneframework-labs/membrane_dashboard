@@ -6,7 +6,7 @@ It uses `membrane_timescaledb_reporter` for obtaining information about pipeline
 
 For now it supports:
 * displaying dependency diagram of pipeline's elements for given time range
-* charts for monitoring input buffers with live update
+* charts for monitoring metrics with live update
 
 It is part of [Membrane Multimedia Framework](https://membraneframework.org).
 
