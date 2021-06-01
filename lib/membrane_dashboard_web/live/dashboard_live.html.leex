@@ -6,8 +6,8 @@
     <label>To</label>
     <input type="text" value="<%= format_time(@time_to) %>" name="timeTo" phx-debounce="blur"/>
     <button name="button" type="submit">Search</button>
-    <button value="5" type="button" phx-click="last-x-min">Last 5 min</button>
-    <button value="10" type="button" phx-click="last-x-min">Last 10 min</button>
+    <button value="1" type="button" phx-click="last-x-min">Last 1 min</button>
+    <button value="3" type="button" phx-click="last-x-min">Last 3 min</button>
   </form>
 
   <form phx-change="validate-accuracy" phx-submit="apply-accuracy">

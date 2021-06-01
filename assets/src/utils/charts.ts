@@ -14,8 +14,8 @@ export function createCharts(
     {
       width: width,
       height: 200,
-      title: `Input buffer size inside ${metric}`,
-      id: "chart1",
+      title: metric,
+      id: metric,
       class: "my-chart",
       series: [],
       axes: [

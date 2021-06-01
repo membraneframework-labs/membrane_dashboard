@@ -111,7 +111,9 @@ defmodule Membrane.Dashboard.Charts.Update do
         create_new_series(accuracy, time_from, last_time_to, new_paths)
 
       all_paths = paths ++ new_paths
-      new_data = extract_new_data(accuracy, update_from, time_to, rows, all_paths)
+
+      new_data =
+        extract_new_data(metric, old_data, accuracy, update_from, time_to, rows, all_paths)
 
       [old_timestamps | old_values] = old_data
 
@@ -171,15 +173,23 @@ defmodule Membrane.Dashboard.Charts.Update do
   # creates list of values for every path in `paths`
   # such list consists of values for every timestamp between `time_from` and `time_to` with given `accuracy`
   # values are extracted from `rows` - result of database query
+  # values for metrics `caps` and `event` are altered - they show sum of processed metrics from the beginning of live update
   # returns list of lists:
   # - first list contains timestamps
   # - next lists contains paths data
-  defp extract_new_data(accuracy, time_from, time_to, rows, paths) do
+  defp extract_new_data(metric, old_data, accuracy, time_from, time_to, rows, paths) do
     interval = create_interval(time_from, time_to, accuracy)
 
     data_by_paths =
-      rows
-      |> to_series(interval)
+      cond do
+        metric in ["caps", "event"] ->
+          rows
+          |> to_series(interval, :update, old_data, paths)
+
+        true ->
+          rows
+          |> to_series(interval)
+      end
       |> Enum.into(%{})
 
     all_nils = get_all_nils(interval)

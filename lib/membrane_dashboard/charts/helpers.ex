@@ -55,7 +55,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   end
 
   @doc """
-  Gets rows of TimescaleDB's measurements table and `interval` as list of timestamps.
+  Gets rows of TimescaleDB's `measurements` table and `interval` as list of timestamps.
 
   Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with
   values (one value for every timestamp in `interval`).
@@ -63,19 +63,90 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @spec to_series([[term()] | binary()] | nil, [float()]) :: [{String.t(), [non_neg_integer()]}]
   def to_series(rows, interval) do
     rows
-    |> Enum.group_by(fn [_time, path, _value] -> path end, fn [time, _path, value] ->
+    |> rows_to_data_by_paths()
+    |> data_by_paths_to_series(interval)
+  end
+
+  @doc """
+  Gets rows of TimescaleDB's `measurements` table, `interval` as list of timestamps, `mode` which is either `:full` or `:update` and two arguments needed when mode is set to `:update`:
+  - old data - 2D list contatining metric data before update
+  - paths - list of all paths that will be present in the new data
+
+  Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with values (one value for every timestamp in `interval`). 
+  Data is altered in the way that every non-nil value is a number of processed metric events from the beginning of live update.
+  """
+  @spec to_series([[term()] | binary()] | nil, [float()], atom(), [[non_neg_integer()]], [
+          String.t()
+        ]) :: [{String.t(), [non_neg_integer()]}]
+  def to_series(rows, interval, mode, old_data \\ [], paths \\ []) do
+    data_by_paths = rows_to_data_by_paths(rows)
+
+    initial_accumulators =
+      case mode do
+        :full ->
+          data_by_paths
+          |> Enum.map(fn {path, _data} -> {path, 0} end)
+          |> Enum.into(%{})
+
+        :update ->
+          get_initial_accumulators(old_data, paths)
+      end
+
+    data_by_paths_to_series(data_by_paths, interval, initial_accumulators)
+  end
+
+  # converts rows from `measurements` table to list of tuples `{path, data}`, where data is a list of tuples contatining timestamps and values
+  defp rows_to_data_by_paths(rows) do
+    Enum.group_by(rows, fn [_time, path, _value] -> path end, fn [time, _path, value] ->
       {time, value}
     end)
+  end
+
+  # converts every `data` from list of tuples `{path, data}` to list of integers (value for every timestamp from `interval`)
+  # if `initial_accumulators` is not `nil`, data is altered in the way that every non-nil value is a number of processed metric events from the beginning of live update
+  # `initial_accumulators` is a map %{path => initial number of processed metrics}
+  defp data_by_paths_to_series(data_by_paths, interval, initial_accumulators \\ nil) do
+    data_by_paths
     |> Enum.map(fn {path, data} ->
       data =
         data
         |> group_by_time()
         |> get_max_value_for_every_timestamp()
         |> Enum.into(%{})
-        |> fill_with_nils(interval)
 
-      {path, data}
+      case initial_accumulators do
+        nil -> {path, fill_with_nils(data, interval)}
+        _ -> {path, fill_with_nils(data, interval, initial_accumulators[path])}
+      end
     end)
+  end
+
+  # extracts initial numbers of processed metrics for update data from `old_data`
+  defp get_initial_accumulators([_interval | old_data], paths) do
+    accumulators =
+      old_data
+      |> Enum.map(&extract_max(&1))
+
+    new_paths_count = length(paths) - length(accumulators)
+
+    accumulators = accumulators ++ for _i <- 1..new_paths_count, do: 0
+
+    Enum.zip(paths, accumulators)
+    |> Enum.into(%{})
+  end
+
+  # performs `Enum.reduce/3` to get max value from a list while ignoring all `nils`
+  defp extract_max(path_data) do
+    Enum.reduce(
+      path_data,
+      0,
+      fn value, acc ->
+        case value do
+          nil -> acc
+          _ -> max(value, acc)
+        end
+      end
+    )
   end
 
   # makes sure that border value read from user input has appropriate value to successfully match timestamps extracted from database
@@ -94,4 +165,23 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   # to put data to uPlot, it is necessary to fill every gap in data by nils
   defp fill_with_nils(path_data, interval),
     do: interval |> Enum.map(&path_data[&1])
+
+  # if passed `initial_accumulator`, then value is equal to number of processed metrics plus `initial_accumulator` at every non-nil point
+  defp fill_with_nils(path_data, interval, initial_accumulator) do
+    interval
+    |> Enum.map_reduce(initial_accumulator, fn timestamp, accumulator ->
+      extract_with_measurements_counting(path_data, timestamp, accumulator)
+    end)
+    |> elem(0)
+  end
+
+  # if there is a value for given `timestamp`, adds it to the `accumulator` and returns the sum
+  # otherwise do not change `accumulator` and returns `nil`
+  defp extract_with_measurements_counting(path_data, timestamp, accumulator) do
+    if Map.has_key?(path_data, timestamp) do
+      {accumulator + path_data[timestamp], accumulator + path_data[timestamp]}
+    else
+      {nil, accumulator}
+    end
+  end
 end

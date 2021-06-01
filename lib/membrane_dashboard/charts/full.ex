@@ -39,7 +39,12 @@ defmodule Membrane.Dashboard.Charts.Full do
     with {:ok, %Postgrex.Result{rows: rows}} <-
            create_sql_query(accuracy, time_from, time_to, metric) |> Repo.query() do
       interval = create_interval(time_from, time_to, accuracy)
-      data_by_paths = to_series(rows, interval)
+
+      data_by_paths =
+        cond do
+          metric in ["caps", "event"] -> to_series(rows, interval, :full)
+          true -> to_series(rows, interval)
+        end
 
       chart_data = %{
         series: extract_opt_series(data_by_paths),

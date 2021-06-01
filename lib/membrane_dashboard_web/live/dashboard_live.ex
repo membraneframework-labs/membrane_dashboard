@@ -8,8 +8,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   require Logger
 
-  @initial_time_offset 300
-  @initial_accuracy 10
+  @initial_time_offset 60
+  @initial_accuracy 100
   @update_time 5000
 
   # initially:
@@ -42,7 +42,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # updates charts and reloads dagre when live update is enabled
   @impl true
   def handle_params(%{"mode" => "update", "from" => from, "to" => to}, _session, socket) do
-    if socket.assigns.data == [[], []] do
+    empty_lists = for _metric <- 1..length(socket.assigns.metrics), do: []
+
+    if socket.assigns.data == empty_lists do
       {:noreply, push_patch_with_params(socket, %{from: from, to: to})}
     else
       with true <- connected?(socket),
