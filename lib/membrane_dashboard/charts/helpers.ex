@@ -5,20 +5,24 @@ defmodule Membrane.Dashboard.Charts.Helpers do
 
   import Membrane.Dashboard.Helpers
 
-  # returns query to select all measurements from database for given metric, accuracy and time range (last two in milliseconds)
-  @spec create_sql_query(non_neg_integer(), non_neg_integer(), non_neg_integer(), String.t()) ::
-          String.t()
-  def create_sql_query(accuracy, time_from, time_to, metric) do
+  @type postgrex_result_rows_t :: [[term()] | binary()] | nil
+
+  @doc """
+  Returns query to select all measurements from database for given accuracy and time range (both in milliseconds).
+  """
+  @spec create_sql_query(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: String.t()
+  def create_sql_query(accuracy, time_from, time_to) do
     accuracy_in_seconds = to_seconds(accuracy)
 
     """
       SELECT floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
+      metric,
       path,
       value
       FROM measurements m JOIN element_paths ep on m.element_path_id = ep.id
       WHERE
-      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' and metric = '#{metric}'
-      GROUP BY time, path, value
+      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}'
+      GROUP BY time, metric, path, value
       ORDER BY time
     """
   end
@@ -29,6 +33,18 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @spec to_seconds(non_neg_integer()) :: float()
   def to_seconds(time),
     do: time / 1000
+
+  @doc """
+  Given rows from the result of `Postgrex.Result` structure, returns map: `%{metric => rows}`. 
+  """
+  @spec group_rows_by_metrics(postgrex_result_rows_t()) :: %{String.t() => postgrex_result_rows_t()}
+  def group_rows_by_metrics(rows) do
+    Enum.group_by(
+      rows,
+      fn [_time, metric, _path, _value] -> metric end, 
+      fn [time, _metric, path, value] -> [time, path, value] end
+    )
+  end
 
   @doc """
   Time in uPlot have to be discrete, so every event from database will land in one specific timestamp from returned interval.
@@ -60,7 +76,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with
   values (one value for every timestamp in `interval`).
   """
-  @spec to_series([[term()] | binary()] | nil, [float()]) :: [{String.t(), [non_neg_integer()]}]
+  @spec to_series(postgrex_result_rows_t(), [float()]) :: [{String.t(), [non_neg_integer()]}]
   def to_series(rows, interval) do
     rows
     |> rows_to_data_by_paths()
@@ -75,7 +91,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with values (one value for every timestamp in `interval`). 
   Data is altered in the way that every non-nil value is a number of processed metric events from the beginning of live update.
   """
-  @spec to_series([[term()] | binary()] | nil, [float()], atom(), [[non_neg_integer()]], [
+  @spec to_series(postgrex_result_rows_t(), [float()], atom(), [[non_neg_integer()]], [
           String.t()
         ]) :: [{String.t(), [non_neg_integer()]}]
   def to_series(rows, interval, mode, old_data \\ [], paths \\ []) do

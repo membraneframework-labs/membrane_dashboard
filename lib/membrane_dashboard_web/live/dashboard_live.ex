@@ -155,6 +155,10 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
+  def handle_event("stop-update", _value, socket) do
+    {:noreply, assign(socket, update: false)}
+  end
+
   def handle_event("apply-accuracy", %{"accuracy" => accuracy}, socket) do
     with {:ok, accuracy} <- check_accuracy(accuracy) do
       {:noreply, push_patch_with_params(socket, %{accuracy: accuracy})}

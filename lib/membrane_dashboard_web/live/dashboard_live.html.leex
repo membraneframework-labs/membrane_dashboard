@@ -8,6 +8,11 @@
     <button name="button" type="submit">Search</button>
     <button value="1" type="button" phx-click="last-x-min">Last 1 min</button>
     <button value="3" type="button" phx-click="last-x-min">Last 3 min</button>
+    <%= if @update do %>
+      <button type="button" phx-click="stop-update">Stop live update</button>
+    <%= else %>
+      <button disabled type="button">Live update stopped</button>
+    <% end %>
   </form>
 
   <form phx-change="validate-accuracy" phx-submit="apply-accuracy">

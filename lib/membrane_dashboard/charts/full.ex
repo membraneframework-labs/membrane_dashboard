@@ -26,35 +26,40 @@ defmodule Membrane.Dashboard.Charts.Full do
   @spec query([String.t()], non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
           {:ok, [chart_data_t()], [String.t()]}
   def query(metrics, time_from, time_to, accuracy) do
-    {charts_data, paths} =
-      metrics
-      |> Enum.map(&one_chart_query(&1, time_from, time_to, accuracy))
-      |> Enum.unzip()
+    with {:ok, %Postgrex.Result{rows: rows}} <-
+      create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
+        rows_by_metrics = group_rows_by_metrics(rows)
 
-    {:ok, charts_data, paths}
+        {charts_data, paths} =
+          metrics
+          |> Enum.map(&get_chart_data(&1, Map.get(rows_by_metrics, &1, []), time_from, time_to, accuracy))
+          |> Enum.unzip()
+
+      {:ok, charts_data, paths}
+    else
+      _ -> 
+        metrics
+        |> Enum.map(fn _metric -> {%{series: [], data: [[]]}, []} end)
+        |> Enum.unzip()
+    end
   end
 
   # returns data for one metric for the given time interval and `accuracy` (all in milliseconds)
-  defp one_chart_query(metric, time_from, time_to, accuracy) do
-    with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, time_from, time_to, metric) |> Repo.query() do
-      interval = create_interval(time_from, time_to, accuracy)
+  defp get_chart_data(metric, rows, time_from, time_to, accuracy) do
+    interval = create_interval(time_from, time_to, accuracy)
 
-      data_by_paths =
-        cond do
-          metric in ["caps", "event"] -> to_series(rows, interval, :full)
-          true -> to_series(rows, interval)
-        end
+    data_by_paths =
+      cond do
+        metric in ["caps", "event"] -> to_series(rows, interval, :full)
+        true -> to_series(rows, interval)
+      end
 
-      chart_data = %{
-        series: extract_opt_series(data_by_paths),
-        data: extract_data(interval, data_by_paths)
-      }
+    chart_data = %{
+      series: extract_opt_series(data_by_paths),
+      data: extract_data(interval, data_by_paths)
+    }
 
-      {chart_data, extract_paths(data_by_paths)}
-    else
-      _ -> {%{series: [], data: [[]]}, []}
-    end
+    {chart_data, extract_paths(data_by_paths)}
   end
 
   # returns list of paths (they are in the same order as in the series that will be sent to uPlot)
