@@ -8,6 +8,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   require Logger
 
+  @metrics ["caps", "event", "store", "take_and_demand"]
+
   @initial_time_offset 60
   @initial_accuracy 100
   @update_time 5000
@@ -19,16 +21,15 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # - `paths` and `data` needed for live update have lists of empty lists
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, metrics} = Metrics.query()
-    empty_lists = for _metric <- 1..length(metrics), do: []
+    empty_lists = for _metric <- 1..length(@metrics), do: []
 
-    send(self(), {:charts_init, metrics})
+    send(self(), {:charts_init, @metrics})
     Process.send_after(self(), :update, @update_time)
 
     {:ok,
      assign(socket,
        top_level_combos: nil,
-       metrics: metrics,
+       metrics: @metrics,
        paths: empty_lists,
        data: empty_lists,
        time_from: now(-@initial_time_offset),
