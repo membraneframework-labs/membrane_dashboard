@@ -12,11 +12,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   @initial_time_offset 60
   @initial_accuracy 100
-  @update_time 5000
+
+  @update_time 5
+  @min_between_updates_interval 4
 
   # initially:
   # - time range is the last `@initial_time_offset` seconds
-  # - live update is enabled
+  # - live update is enabled - now updates `@update_time` seconds after last sending data to uPlot
   # - charts are created based on current metrics in database
   # - `paths` and `data` needed for live update have lists of empty lists
   @impl true
@@ -24,20 +26,23 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     empty_lists = for _metric <- 1..length(@metrics), do: []
 
     send(self(), {:charts_init, @metrics})
-    Process.send_after(self(), :update, @update_time)
 
-    {:ok,
-     assign(socket,
-       top_level_combos: nil,
-       metrics: @metrics,
-       paths: empty_lists,
-       data: empty_lists,
-       time_from: now(-@initial_time_offset),
-       time_to: now(),
-       accuracy: @initial_accuracy,
-       update: true,
-       update_range: @initial_time_offset
-     )}
+    socket =
+      socket
+      |> plan_update()
+      |> assign(
+        top_level_combos: nil,
+        metrics: @metrics,
+        paths: empty_lists,
+        data: empty_lists,
+        time_from: now(-@initial_time_offset),
+        time_to: now(),
+        accuracy: @initial_accuracy,
+        update: true,
+        update_range: @initial_time_offset
+      )
+
+    {:ok, socket}
   end
 
   # updates charts and reloads dagre when live update is enabled
@@ -56,14 +61,19 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         send(self(), {:dagre_data, dagre})
         send(self(), {:charts_update, charts})
 
-        {:noreply, assign(socket, paths: paths, data: data, time_from: from, time_to: to)}
+        socket =
+          socket
+          |> plan_update()
+          |> assign(paths: paths, data: data, time_from: from, time_to: to)
+
+        {:noreply, socket}
       else
         {:error, reason} ->
           Logger.error(reason)
-          {:noreply, socket}
+          {:noreply, plan_update(socket)}
 
         _ ->
-          {:noreply, socket}
+          {:noreply, plan_update(socket)}
       end
     end
   end
@@ -84,23 +94,27 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         charts
         |> Enum.map(fn chart -> chart[:data] end)
 
-      {:noreply,
-       assign(socket,
-         paths: paths,
-         data: data,
-         time_from: from,
-         time_to: to,
-         accuracy: accuracy,
-         update: update,
-         update_range: update_range
-       )}
+      socket =
+        socket
+        |> plan_update()
+        |> assign(
+          paths: paths,
+          data: data,
+          time_from: from,
+          time_to: to,
+          accuracy: accuracy,
+          update: update,
+          update_range: update_range
+        )
+
+      {:noreply, socket}
     else
       {:error, reason} ->
         Logger.error(reason)
-        {:noreply, socket}
+        {:noreply, plan_update(socket)}
 
       _ ->
-        {:noreply, socket}
+        {:noreply, plan_update(socket)}
     end
   end
 
@@ -119,9 +133,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     do: {:noreply, push_event(socket, "dagre_data", %{data: data})}
 
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, @update_time)
+    if socket.assigns.update and socket.assigns.next_update_time <= now() do
+      socket = assign(socket, next_update_time: now(@min_between_updates_interval))
 
-    if socket.assigns.update do
       {:noreply,
        push_patch_with_params(socket, %{
          mode: :update,
@@ -144,6 +158,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
+      socket = assign(socket, next_update_time: now(@min_between_updates_interval))
+
       {:noreply,
        push_patch_with_params(socket, %{
          from: now(-60 * minutes_as_int),
@@ -186,14 +202,25 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   Changes UNIX time to ISO 8601 format.
   """
   @spec format_time(non_neg_integer()) :: String.t()
-  def format_time(time),
-    do: time |> Helpers.add_to_beginning_of_time() |> DateTime.to_iso8601()
+  def format_time(time) do
+    time
+    |> Helpers.add_to_beginning_of_time()
+    |> DateTime.to_iso8601()
+  end
 
   # returns current UNIX time with optional offset
   defp now(offset \\ 0) do
     DateTime.utc_now()
     |> DateTime.add(offset)
     |> DateTime.to_unix(:millisecond)
+  end
+
+  # next update will be in `@update_time` seconds
+  # returns socket with assigned threshold time for update - update message must appear after it to perform update
+  # `@min_between_updates_interval` must be smaller than `@update_time` to assure that update can be performed after receiving that message
+  defp plan_update(socket) do
+    Process.send_after(self(), :update, @update_time * 1000)
+    assign(socket, next_update_time: now(@min_between_updates_interval))
   end
 
   # returns pair of UNIX time values made from strings in params or extracted from assigns in socket
