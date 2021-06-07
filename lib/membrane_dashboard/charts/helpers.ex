@@ -37,11 +37,13 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @doc """
   Given rows from the result of `Postgrex.Result` structure, returns map: `%{metric => rows}`. 
   """
-  @spec group_rows_by_metrics(postgrex_result_rows_t()) :: %{String.t() => postgrex_result_rows_t()}
+  @spec group_rows_by_metrics(postgrex_result_rows_t()) :: %{
+          String.t() => postgrex_result_rows_t()
+        }
   def group_rows_by_metrics(rows) do
     Enum.group_by(
       rows,
-      fn [_time, metric, _path, _value] -> metric end, 
+      fn [_time, metric, _path, _value] -> metric end,
       fn [time, _metric, path, value] -> [time, path, value] end
     )
   end
