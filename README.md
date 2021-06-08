@@ -29,12 +29,15 @@ To run the application you need to provide a few necessary environment variables
 * server host:
     * HOST - hostname to access the application
 
+You can also pass one optional environment variable:
+* PORT - port at which the application will be available
+
 Running example:
 ```bash
 DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=localhost HOST=localhost mix phx.server
 ```
 
-Application uses port `4000`. If `HOST=localhost`, dashboard will be available at address `http://localhost:4000`.
+Application uses port `8000` by default. If `HOST=localhost`, dashboard will be available at address `http://localhost:8000`.
 
 ## Copyright and License
 
