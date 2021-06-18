@@ -19,7 +19,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
       metric,
       path,
       value
-      FROM measurements m JOIN element_paths ep on m.element_path_id = ep.id
+      FROM measurements m JOIN component_paths ep on m.component_path_id = ep.id
       WHERE
       time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}'
       GROUP BY time, metric, path, value
