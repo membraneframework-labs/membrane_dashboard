@@ -1,7 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.{Dagre, Metrics, Helpers}
+  alias Membrane.Dashboard.{Dagre, Helpers}
   alias Membrane.Dashboard.Charts.Full, as: ChartsFull
   alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes

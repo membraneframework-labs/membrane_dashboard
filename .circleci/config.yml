@@ -8,7 +8,7 @@ workflows:
 jobs:
   lint:
     docker:
-      - image: membrane/membrane:latest 
+      - image: membraneframeworklabs/docker_membrane 
         environment:
           MIX_ENV: dev
 
