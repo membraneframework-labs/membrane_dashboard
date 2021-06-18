@@ -21,5 +21,7 @@ jobs:
       - run: mix deps.get
       - run: mix format --check-formatted
       - run: mix compile
+      - run: mix dialyzer
+      - run: mix docs
       - run: npm ci --prefix assets
       - run: npm run lint --prefix assets
