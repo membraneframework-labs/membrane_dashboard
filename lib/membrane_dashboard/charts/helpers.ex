@@ -155,16 +155,9 @@ defmodule Membrane.Dashboard.Charts.Helpers do
 
   # performs `Enum.reduce/3` to get max value from a list while ignoring all `nils`
   defp extract_max(path_data) do
-    Enum.reduce(
-      path_data,
-      0,
-      fn value, acc ->
-        case value do
-          nil -> acc
-          _ -> max(value, acc)
-        end
-      end
-    )
+    path_data
+    |> Enum.reject(&is_nil(&1))
+    |> Enum.max(fn -> 0 end)
   end
 
   # makes sure that border value read from user input has appropriate value to successfully match timestamps extracted from database

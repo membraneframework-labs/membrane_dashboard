@@ -3,12 +3,12 @@
 import uPlot, { AlignedData } from "uplot";
 import { getXTicksConfig } from "../utils/chartsXTicksConfig";
 
-const metricToTitle = new Map([
-  ["caps", "Processed caps"],
-  ["event", "Processed events"],
-  ["store", "Input buffer size inside store/3"],
-  ["take_and_demand", "Input buffer size inside take_and_demand/4"],
-]);
+const metricToTitle: Record<string, string> = {
+  caps: "Processed caps",
+  event: "Processed events",
+  store: "Input buffer size inside store/3",
+  take_and_demand: "Input buffer size inside take_and_demand/4",
+};
 
 export function createCharts(
   container: HTMLElement,
@@ -21,7 +21,7 @@ export function createCharts(
     {
       width: width,
       height: 200,
-      title: getChartTitle(metric),
+      title: metricToTitle[metric] ?? metric,
       id: metric,
       class: "my-chart",
       series: [],
@@ -50,13 +50,4 @@ export function createCharts(
     data,
     container
   );
-}
-
-function getChartTitle(metric: string): string {
-  const title = metricToTitle.get(metric);
-  if (title) {
-    return title;
-  } else {
-    return metric;
-  }
 }

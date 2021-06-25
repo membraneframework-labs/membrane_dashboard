@@ -23,11 +23,11 @@ defmodule Membrane.Dashboard.Charts.Update do
            |______________________________________________|
 
 
-  Firstly, queries database to get all data from last 5 seconds. Then applies following steps for every chart to update data:
-  1. Extract new paths (of pipeline elements) from the result of query (all paths that appeared for the first time in the last 5 seconds).
-  2. Create list of uPlot Series objects with `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
-  3. Every path need to have value for every timestamp. Thus new series data for the time before update is filled with nils.
-  4. Extract new data (data for all paths for last 5 seconds; as list of lists) from database query result.
+  Firstly, queries the database to get all the data from the last 5 seconds. Then applies the following steps for every chart to update the data:
+  1. Extract new paths (of pipeline elements) from the result of the query (all paths that appeared for the first time in the last 5 seconds).
+  2. Create a list of uPlot Series objects with the `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
+  3. Every path needs to have a value for every timestamp. Thus new series data for the time before update is filled with nils.
+  4. Extract new data (data for all paths for last 5 seconds; as a list of lists) from the database query result.
   5. Truncate old data - delete its first 5 seconds (to maintain visibility of just last x minutes).
   6. Concatenate truncated old data and new series data - it creates full data for the time before update.
   7. Append new data to every path data.
