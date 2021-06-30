@@ -28,9 +28,9 @@ const ChartsHook = {
     // creating empty charts with proper names and sizes
     this.handleEvent("charts_init", (payload) => {
       const width = this.el.scrollWidth - 20;
-      const methods = (payload as InitData).data;
-      for (const method of methods) {
-        const chart = createCharts(this.el, width, method);
+      const metrics = (payload as InitData).data;
+      for (const metric of metrics) {
+        const chart = createCharts(this.el, width, metric);
         this.charts.push(chart);
       }
     });

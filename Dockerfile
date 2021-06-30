@@ -59,6 +59,6 @@ COPY --from=build --chown=nobody:nobody /app/_build/prod/rel/membrane_dashboard 
 
 ENV HOME=/app
 
-EXPOSE 4000
+EXPOSE 8000
 
 CMD ["bin/membrane_dashboard", "start"]

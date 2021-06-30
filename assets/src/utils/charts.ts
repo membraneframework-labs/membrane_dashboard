@@ -3,10 +3,17 @@
 import uPlot, { AlignedData } from "uplot";
 import { getXTicksConfig } from "../utils/chartsXTicksConfig";
 
+const metricToTitle: Record<string, string> = {
+  caps: "Processed caps",
+  event: "Processed events",
+  store: "Input buffer size inside store/3",
+  take_and_demand: "Input buffer size inside take_and_demand/4",
+};
+
 export function createCharts(
   container: HTMLElement,
   width: number,
-  method: string
+  metric: string
 ): uPlot {
   const data: AlignedData = [[]];
 
@@ -14,8 +21,8 @@ export function createCharts(
     {
       width: width,
       height: 200,
-      title: `Input buffer size inside ${method}`,
-      id: "chart1",
+      title: metricToTitle[metric] ?? metric,
+      id: metric,
       class: "my-chart",
       series: [],
       axes: [

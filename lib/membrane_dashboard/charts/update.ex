@@ -23,16 +23,15 @@ defmodule Membrane.Dashboard.Charts.Update do
            |______________________________________________|
 
 
-  Steps needed for every chart to update data:
-  1. Query database to get all data from last 5 seconds.
-  2. Extract new paths (of pipeline elements) from the result of query (all paths that appeared for the first time in the last 5 seconds).
-  3. Create list of uPlot Series objects with `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
-  4. Every path need to have value for every timestamp. Thus new series data for the time before update is filled with nils.
-  5. Extract new data (data for all paths for last 5 seconds; as list of lists) from database query result.
-  6. Truncate old data - delete its first 5 seconds (to maintain visibility of just last x minutes).
-  7. Concatenate truncated old data and new series data - it creates full data for the time before update.
-  8. Append new data to every path data.
-  9. Create map (of type `update_data_t`) serializable to ChartData in ChartsHook.
+  Firstly, queries the database to get all the data from the last 5 seconds. Then applies the following steps for every chart to update the data:
+  1. Extract new paths (of pipeline elements) from the result of the query (all paths that appeared for the first time in the last 5 seconds).
+  2. Create a list of uPlot Series objects with the `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
+  3. Every path needs to have a value for every timestamp. Thus new series data for the time before update is filled with nils.
+  4. Extract new data (data for all paths for last 5 seconds; as a list of lists) from the database query result.
+  5. Truncate old data - delete its first 5 seconds (to maintain visibility of just last x minutes).
+  6. Concatenate truncated old data and new series data - it creates full data for the time before update.
+  7. Append new data to every path data.
+  8. Create map (of type `update_data_t`) serializable to ChartData in ChartsHook.
   """
 
   import Membrane.Dashboard.Charts.Helpers
@@ -54,90 +53,126 @@ defmodule Membrane.Dashboard.Charts.Update do
           {:ok, {[update_data_t()], [[[non_neg_integer()]]], [[String.t()]]}}
   def query(socket, time_from, time_to) do
     last_time_to = socket.assigns.time_to
-
-    with {:ok, updated_data} <-
-           query_recursively(
-             socket.assigns.methods,
-             socket.assigns.paths,
-             socket.assigns.data,
-             socket.assigns.accuracy,
-             time_from,
-             last_time_to,
-             time_to
-           ) do
-      {:ok, unzip3(updated_data)}
-    end
-  end
-
-  # methods, paths and old data are lists of the same size
-  # one element of the list has information about one chart so one call of this function updates data for one chart
-  defp query_recursively([], [], [], _accuracy, _time_from, _last_time_to, _time_to),
-    do: {:ok, []}
-
-  defp query_recursively(
-         [method | methods],
-         [method_paths | paths],
-         [method_data | data],
-         accuracy,
-         time_from,
-         last_time_to,
-         time_to
-       ) do
-    with {:ok, method_updated_data} <-
-           one_chart_query(
-             method,
-             method_paths,
-             method_data,
-             accuracy,
-             time_from,
-             last_time_to,
-             time_to
-           ),
-         {:ok, updated_data} <-
-           query_recursively(methods, paths, data, accuracy, time_from, last_time_to, time_to) do
-      {:ok, [method_updated_data | updated_data]}
-    end
-  end
-
-  # queries database and prepares data for one chart
-  defp one_chart_query(method, paths, old_data, accuracy, time_from, last_time_to, time_to) do
-    update_from = last_time_to + accuracy
+    update_from = last_time_to + socket.assigns.accuracy
 
     with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, update_from, time_to, method) |> Repo.query() do
-      new_paths = get_new_paths(paths, rows)
+           create_sql_query(socket.assigns.accuracy, update_from, time_to) |> Repo.query() do
+      rows_by_metrics = group_rows_by_metrics(rows)
 
-      {new_series, new_series_data} =
-        create_new_series(accuracy, time_from, last_time_to, new_paths)
+      updated_data =
+        query_recursively(
+          socket.assigns.metrics,
+          rows_by_metrics,
+          socket.assigns.paths,
+          socket.assigns.data,
+          socket.assigns.accuracy,
+          time_from,
+          update_from,
+          last_time_to,
+          time_to
+        )
+        |> unzip3()
 
-      all_paths = paths ++ new_paths
-      new_data = extract_new_data(accuracy, update_from, time_to, rows, all_paths)
-
-      [old_timestamps | old_values] = old_data
-
-      truncated_timestamps =
-        old_timestamps
-        |> Enum.drop_while(fn timestamp -> timestamp < to_seconds(time_from) end)
-
-      to_drop = length(old_timestamps) - length(truncated_timestamps)
-
-      truncated_old_values =
-        old_values
-        |> Enum.map(fn one_series_values -> Enum.drop(one_series_values, to_drop) end)
-
-      truncated_old_data = [truncated_timestamps | truncated_old_values]
-
-      updated_data = append_data(truncated_old_data ++ new_series_data, new_data)
-
-      chart_data = %{
-        series: new_series,
-        data: updated_data
-      }
-
-      {:ok, {chart_data, updated_data, all_paths}}
+      {:ok, updated_data}
     else
       {:error, _reason} -> {:error, "Cannot fetch update data for charts"}
     end
+  end
+
+  # metrics, paths and old data are lists of the same size
+  # one element of the list has information about one chart so one call of this function updates data for one chart
+  defp query_recursively(
+         [],
+         _rows_by_metrics,
+         [],
+         [],
+         _accuracy,
+         _time_from,
+         _update_from,
+         _last_time_to,
+         _time_to
+       ),
+       do: []
+
+  defp query_recursively(
+         [metric | metrics],
+         rows_by_metrics,
+         [metric_paths | paths],
+         [metric_data | data],
+         accuracy,
+         time_from,
+         update_from,
+         last_time_to,
+         time_to
+       ) do
+    metric_updated_data =
+      one_chart_query(
+        metric,
+        Map.get(rows_by_metrics, metric, []),
+        metric_paths,
+        metric_data,
+        accuracy,
+        time_from,
+        update_from,
+        last_time_to,
+        time_to
+      )
+
+    updated_data =
+      query_recursively(
+        metrics,
+        rows_by_metrics,
+        paths,
+        data,
+        accuracy,
+        time_from,
+        update_from,
+        last_time_to,
+        time_to
+      )
+
+    [metric_updated_data | updated_data]
+  end
+
+  # prepares data for one chart
+  defp one_chart_query(
+         metric,
+         rows,
+         paths,
+         old_data,
+         accuracy,
+         time_from,
+         update_from,
+         last_time_to,
+         time_to
+       ) do
+    new_paths = get_new_paths(paths, rows)
+    all_paths = paths ++ new_paths
+
+    {new_series, new_series_data} =
+      create_new_series(accuracy, time_from, last_time_to, new_paths)
+
+    new_data = extract_new_data(metric, old_data, accuracy, update_from, time_to, rows, all_paths)
+
+    [old_timestamps | old_values] = old_data
+
+    truncated_timestamps =
+      Enum.drop_while(old_timestamps, fn timestamp -> timestamp < to_seconds(time_from) end)
+
+    to_drop = length(old_timestamps) - length(truncated_timestamps)
+
+    truncated_old_values =
+      Enum.map(old_values, fn one_series_values -> Enum.drop(one_series_values, to_drop) end)
+
+    truncated_old_data = [truncated_timestamps | truncated_old_values]
+    updated_data = append_data(truncated_old_data ++ new_series_data, new_data)
+
+    chart_data = %{
+      series: new_series,
+      data: updated_data
+    }
+
+    {chart_data, updated_data, all_paths}
   end
 
   # returns paths from database query result which were not present before update
@@ -157,36 +192,33 @@ defmodule Membrane.Dashboard.Charts.Update do
       |> Enum.map(fn path_name -> [{:label, path_name}] end)
       |> Enum.map(&Enum.into(&1, %{}))
 
-    interval = create_interval(time_from, time_to, accuracy)
+    all_nils =
+      create_interval(time_from, time_to, accuracy)
+      |> get_all_nils()
 
-    all_nils = get_all_nils(interval)
-
-    data =
-      new_paths
-      |> Enum.map(fn _path -> all_nils end)
-
+    data = Enum.map(new_paths, fn _path -> all_nils end)
     {series, data}
   end
 
   # creates list of values for every path in `paths`
   # such list consists of values for every timestamp between `time_from` and `time_to` with given `accuracy`
   # values are extracted from `rows` - result of database query
+  # values for metrics `caps` and `event` are altered - they show sum of processed metrics from the beginning of live update
   # returns list of lists:
   # - first list contains timestamps
   # - next lists contains paths data
-  defp extract_new_data(accuracy, time_from, time_to, rows, paths) do
+  defp extract_new_data(metric, old_data, accuracy, time_from, time_to, rows, paths) do
     interval = create_interval(time_from, time_to, accuracy)
 
     data_by_paths =
-      rows
-      |> to_series(interval)
+      cond do
+        metric in ["caps", "event"] -> to_series(rows, interval, :update, old_data, paths)
+        true -> to_series(rows, interval)
+      end
       |> Enum.into(%{})
 
     all_nils = get_all_nils(interval)
-
-    data =
-      paths
-      |> Enum.map(fn path -> Map.get(data_by_paths, path, all_nils) end)
+    data = Enum.map(paths, fn path -> Map.get(data_by_paths, path, all_nils) end)
 
     [interval | data]
   end
