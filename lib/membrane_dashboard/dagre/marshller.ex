@@ -7,7 +7,10 @@ defmodule Membrane.Dashboard.Dagre.Marshaller do
           pad_to: String.t()
         }
 
-  @callback run([link_t()], elements_liveliness :: [new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()]) :: {:ok, any()} | {:error, any()}
+  @callback run(
+              [link_t()],
+              elements_liveliness :: [new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()]
+            ) :: {:ok, any()} | {:error, any()}
 
   defmacro __using__(_opts) do
     quote do

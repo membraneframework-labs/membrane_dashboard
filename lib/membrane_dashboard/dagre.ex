@@ -65,25 +65,43 @@ defmodule Membrane.Dashboard.Dagre do
 
     query_links = fn elements ->
       from(l in "links",
-        where: fragment("concat(?, '/', ?)", l.parent_path, l.from) in ^elements or fragment("concat(?, '/', ?)", l.parent_path, l.to) in ^elements,
-        select: [l.parent_path, l.from, l.to, l.pad_from, l.pad_to])
+        where:
+          fragment(
+            "ARRAY[?, ?, ?, ?] && ?",
+            fragment("concat(?, '/', ?)", l.parent_path, l.from),
+            fragment("concat(?, '/', ?)", l.parent_path, l.to),
+            fragment("concat(?, '/', ?, ' bin')", l.parent_path, l.from),
+            fragment("concat(?, '/', ?, ' bin')", l.parent_path, l.to),
+            fragment("?", ^elements)
+          ),
+        select: [l.parent_path, l.from, l.to, l.pad_from, l.pad_to]
+      )
       |> Repo.all()
     end
 
-   with {:ok, all_alive_elements} <- alive_element_paths(time_from, time_to),
-      {:ok, dead_elements} <- element_paths_in_time_range(time_from, time_to, true),
-      {:ok, new_elements} <- element_paths_in_time_range(time_from, time_to, false),
-      existing_elements <- MapSet.difference(all_alive_elements, new_elements),
-      elements_to_query <- MapSet.union(all_alive_elements, dead_elements),
-      links <- elements_to_query |> Enum.map(& String.replace(&1, "\\", ""))  |> query_links.(),
-         {:ok, dagre} <- links |> format_rows() |> __MODULE__.G6Marshaller.run([dead: dead_elements, new: new_elements, existing: existing_elements]) do
+    with {:ok, all_alive_elements} <- alive_element_paths(time_from, time_to),
+         {:ok, dead_elements} <- element_paths_in_time_range(time_from, time_to, true),
+         {:ok, new_elements} <- element_paths_in_time_range(time_from, time_to, false),
+         existing_elements <- MapSet.difference(all_alive_elements, new_elements),
+         elements_to_query <- MapSet.union(all_alive_elements, dead_elements),
+         links <- elements_to_query |> Enum.map(&String.replace(&1, "\\", "")) |> query_links.(),
+         {:ok, dagre} <-
+           links
+           |> format_rows()
+           |> __MODULE__.G6Marshaller.run(
+             dead: dead_elements,
+             new: new_elements,
+             existing: existing_elements
+           ) do
       %{nodes: nodes, edges: edges, combos: combos} = dagre
+
       [nodes, edges, combos] =
         [nodes, edges, combos]
         |> Enum.map(fn
           %MapSet{} = set -> MapSet.to_list(set)
           list -> list
         end)
+
       {:ok, %{nodes: nodes, edges: edges, combos: combos}}
     else
       {:error, reason} ->
@@ -115,16 +133,18 @@ defmodule Membrane.Dashboard.Dagre do
     # If the data is not corrupted (all termination events have been registered successfully) then for given path we can have
     # 2 entries which one indicates element initialization and the other one element termination. If 2 entries exits then
     # just check if the latter entry happened after `time_to`.
-    result =  """
-    SELECT path as total FROM elements
-    GROUP BY path
-    HAVING MIN(time) < '#{parse_time(time_to)}' AND (
-      CASE
-        WHEN COUNT(*) = 2 THEN MAX(time) > '#{parse_time(time_to)}'
-        ELSE true
-       END
-    );
-    """ |> Repo.query()
+    result =
+      """
+      SELECT path as total FROM elements
+      GROUP BY path
+      HAVING MIN(time) < '#{parse_time(time_to)}' AND (
+        CASE
+          WHEN COUNT(*) = 2 THEN MAX(time) > '#{parse_time(time_to)}'
+          ELSE true
+         END
+      );
+      """
+      |> Repo.query()
 
     with {:ok, %Postgrex.Result{rows: elements}} <- result do
       {:ok, format_element_paths(elements)}
@@ -136,7 +156,11 @@ defmodule Membrane.Dashboard.Dagre do
   end
 
   def element_paths_in_time_range(time_from, time_to, terminated?) do
-    result = "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{parse_time(time_from)}' and '#{parse_time(time_to)}'" |> Repo.query()
+    result =
+      "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{
+        parse_time(time_from)
+      }' and '#{parse_time(time_to)}'"
+      |> Repo.query()
 
     with {:ok, %Postgrex.Result{rows: elements}} <- result do
       {:ok, format_element_paths(elements)}

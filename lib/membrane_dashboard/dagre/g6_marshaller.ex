@@ -41,7 +41,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
         &reduce_link/2
       )
 
-      nodes = colorize_nodes(result.nodes, elements_liveliness)
+    nodes = colorize_nodes(result.nodes, elements_liveliness)
 
     {:ok, %{result | nodes: nodes}}
   end
@@ -135,30 +135,34 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
     }
   end
 
-  defp colorize_nodes(nodes, [dead: dead, new: new, existing: existing]) do
+  defp colorize_nodes(nodes, dead: dead, new: new, existing: existing) do
     nodes
     |> Enum.map(fn %{path: path, is_bin: is_bin} = node ->
-
-      path = if is_bin do
-        path |> Enum.reverse() |> tl() |> Enum.reverse()
-      else
-        path
-      end
+      path =
+        if is_bin do
+          path |> Enum.reverse() |> tl() |> Enum.reverse()
+        else
+          path
+        end
 
       path_str = Enum.join(path, "/")
 
-      style = cond do
-        MapSet.member?(dead, path_str) ->
-          if is_bin, do: @dead_bin_node_style, else: @dead_node_style
-        MapSet.member?(new, path_str) ->
-          if is_bin, do: @new_bin_node_style, else: @new_node_style
-        MapSet.member?(existing, path_str) ->
-          if is_bin, do: @existing_bin_node_style, else: @existing_node_style
-        true ->
-          Logger.warn("#{path_str} has not been found among queried elements...")
+      style =
+        cond do
+          MapSet.member?(dead, path_str) ->
+            if is_bin, do: @dead_bin_node_style, else: @dead_node_style
 
-          @default_node_style
-      end
+          MapSet.member?(new, path_str) ->
+            if is_bin, do: @new_bin_node_style, else: @new_node_style
+
+          MapSet.member?(existing, path_str) ->
+            if is_bin, do: @existing_bin_node_style, else: @existing_node_style
+
+          true ->
+            Logger.warn("#{path_str} has not been found among queried elements...")
+
+            @default_node_style
+        end
 
       node |> Map.put(:style, style)
     end)
