@@ -1,14 +1,36 @@
 defmodule Membrane.Dashboard.Dagre.G6Marshaller do
   use Membrane.Dashboard.Dagre.Marshaller
 
+  require Logger
+
   @bin_itself "{Membrane.Bin, :itself}"
 
-  @bin_node_style %{
-    fill: "#ebb434"
+  @new_bin_node_style %{
+    fill: "#ffb700"
   }
 
+  @dead_bin_node_style %{
+    fill: "#730000"
+  }
+
+  @existing_bin_node_style %{
+    fill: "#ad8110"
+  }
+
+  @new_node_style %{
+    fill: "#14fa14"
+  }
+  @dead_node_style %{
+    fill: "#ff5559"
+  }
+  @existing_node_style %{
+    fill: "#166e15"
+  }
+
+  @default_node_style %{}
+
   @impl true
-  def run(links) do
+  def run(links, elements_liveliness) do
     bin_nodes = collect_bin_nodes(links)
 
     result =
@@ -19,7 +41,9 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
         &reduce_link/2
       )
 
-    {:ok, result}
+      nodes = colorize_nodes(result.nodes, elements_liveliness)
+
+    {:ok, %{result | nodes: nodes}}
   end
 
   defp format_link(link, bin_nodes) do
@@ -57,14 +81,16 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
           id: link.from_node,
           label: link.from,
           comboId: from_combo.id,
-          style: if(link.from_is_bin, do: @bin_node_style, else: %{})
+          is_bin: link.from_is_bin,
+          path: link.from_path ++ [link.from]
         })
         # put 'to' node
         |> MapSet.put(%{
           id: link.to_node,
           label: link.to,
           comboId: to_combo.id,
-          style: if(link.to_is_bin, do: @bin_node_style, else: %{})
+          is_bin: link.to_is_bin,
+          path: link.to_path ++ [link.to]
         }),
       edges:
         edges
@@ -107,6 +133,35 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
       label: label,
       parentId: parent_id
     }
+  end
+
+  defp colorize_nodes(nodes, [dead: dead, new: new, existing: existing]) do
+    nodes
+    |> Enum.map(fn %{path: path, is_bin: is_bin} = node ->
+
+      path = if is_bin do
+        path |> Enum.reverse() |> tl() |> Enum.reverse()
+      else
+        path
+      end
+
+      path_str = Enum.join(path, "/")
+
+      style = cond do
+        MapSet.member?(dead, path_str) ->
+          if is_bin, do: @dead_bin_node_style, else: @dead_node_style
+        MapSet.member?(new, path_str) ->
+          if is_bin, do: @new_bin_node_style, else: @new_node_style
+        MapSet.member?(existing, path_str) ->
+          if is_bin, do: @existing_bin_node_style, else: @existing_node_style
+        true ->
+          Logger.warn("#{path_str} has not been found among queried elements...")
+
+          @default_node_style
+      end
+
+      node |> Map.put(:style, style)
+    end)
   end
 
   defp format_element(last_parent, @bin_itself, pad, _is_bin),

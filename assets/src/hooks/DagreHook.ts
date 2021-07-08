@@ -31,6 +31,13 @@ const DagreHook = {
       this.graph.updateLayout({ sortByCombo: true });
     });
 
+    document.getElementById("dagre-export-image")?.addEventListener("click", () => {
+      this.graph.downloadFullImage("pipelines-graph", "image/png", {
+        padding: [30, 15, 15, 15],
+      });
+      this.graph.updateLayout({ sortByCombo: true });
+    });
+
     const canvas = document.querySelector(
       "#dagre-container > canvas"
     )! as HTMLCanvasElement;

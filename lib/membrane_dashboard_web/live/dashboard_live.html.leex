@@ -33,8 +33,10 @@
     <% end %>
   </div>
 
+  <h2>Charts</h2>
   <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
 
+  <h2>Pipeline diagrams</h2>
   <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
 
   <%= if not is_nil(@top_level_combos) do %>
@@ -46,5 +48,9 @@
     </div>
   <% end %>
 
-  <button id="dagre-relayout">Relayout dagre</button>
+
+  <div id="dagre-controls">
+    <button id="dagre-relayout">Relayout dagre</button>
+    <button id="dagre-export-image">Export image</button>
+  </div>
 </div>
