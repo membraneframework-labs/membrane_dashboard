@@ -49,23 +49,23 @@ defmodule Membrane.Dashboard.Charts.Update do
     - full data as 3d list;
     - list of all paths.
   """
-  @spec query(Phoenix.LiveView.Socket.t(), non_neg_integer(), non_neg_integer()) ::
+  @spec query(assigns :: map(), non_neg_integer(), non_neg_integer()) ::
           {:ok, {[update_data_t()], [[[non_neg_integer()]]], [[String.t()]]}}
-  def query(socket, time_from, time_to) do
-    last_time_to = socket.assigns.time_to
-    update_from = last_time_to + socket.assigns.accuracy
+  def query(assigns, time_from, time_to) do
+    last_time_to = assigns.time_to
+    update_from = last_time_to + assigns.accuracy
 
     with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(socket.assigns.accuracy, update_from, time_to) |> Repo.query() do
+           create_sql_query(assigns.accuracy, update_from, time_to) |> Repo.query() do
       rows_by_metrics = group_rows_by_metrics(rows)
 
       updated_data =
         query_recursively(
-          socket.assigns.metrics,
+          assigns.metrics,
           rows_by_metrics,
-          socket.assigns.paths,
-          socket.assigns.data,
-          socket.assigns.accuracy,
+          assigns.paths,
+          assigns.data,
+          assigns.accuracy,
           time_from,
           update_from,
           last_time_to,

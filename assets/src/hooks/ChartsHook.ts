@@ -22,11 +22,16 @@ interface RefreshData {
 }
 
 const ChartsHook = {
+  destroyed(this: Hook) {
+    // TODO: add removing charts when hooks gets destroyed (happens sometimes but don't know why yet)
+
+  },
   mounted(this: Hook) {
     this.charts = [];
 
     // creating empty charts with proper names and sizes
     this.handleEvent("charts_init", (payload) => {
+      this.charts = [];
       const width = this.el.scrollWidth - 20;
       const metrics = (payload as InitData).data;
       for (const metric of metrics) {
