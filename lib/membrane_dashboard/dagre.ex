@@ -157,9 +157,7 @@ defmodule Membrane.Dashboard.Dagre do
 
   def element_paths_in_time_range(time_from, time_to, terminated?) do
     result =
-      "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{
-        parse_time(time_from)
-      }' and '#{parse_time(time_to)}'"
+      "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{parse_time(time_from)}' and '#{parse_time(time_to)}'"
       |> Repo.query()
 
     with {:ok, %Postgrex.Result{rows: elements}} <- result do
