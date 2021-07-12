@@ -85,10 +85,14 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          accuracy <- extract_accuracy(params, socket),
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket) do
-
       socket =
         socket
-        |> launch_query_task(%{metrics: socket.assigns.metrics, accuracy: accuracy}, from, to, :full)
+        |> launch_query_task(
+          %{metrics: socket.assigns.metrics, accuracy: accuracy},
+          from,
+          to,
+          :full
+        )
         |> assign(
           accuracy: accuracy,
           update: update,
@@ -98,7 +102,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       {:noreply, socket}
     else
       something ->
-        Logger.error("Encountered invalid arguments when handling params: #{inspect something}")
+        Logger.error("Encountered invalid arguments when handling params: #{inspect(something)}")
         {:noreply, socket}
     end
   end
@@ -109,7 +113,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, push_event(socket, "charts_init", %{data: data})}
   end
 
-  def handle_info({event, charts, data, paths}, socket) when event in [:charts_data, :charts_update] do
+  def handle_info({event, charts, data, paths}, socket)
+      when event in [:charts_data, :charts_update] do
     socket =
       socket
       |> push_event(Atom.to_string(event), %{data: charts})
@@ -139,7 +144,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, socket}
   end
 
-
   def handle_info({:dagre_data, data}, socket) do
     {:noreply, push_event(socket, "dagre_data", %{data: data})}
   end
@@ -157,7 +161,10 @@ defmodule Membrane.DashboardWeb.DashboardLive do
      })}
   end
 
-  def handle_info({:DOWN, query_task_ref, :process, _pid, reason}, %{assigns: %{query_task_ref: query_task_ref}} = socket) do
+  def handle_info(
+        {:DOWN, query_task_ref, :process, _pid, reason},
+        %{assigns: %{query_task_ref: query_task_ref}} = socket
+      ) do
     {:noreply, assign(socket, query_task_ref: nil)}
   end
 
@@ -189,11 +196,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   def handle_event("toggle-update-mode", _value, socket) do
-    socket = if is_nil(socket.assigns.update_ref)  do
-      plan_update(socket)
-    else
-      cancel_update(socket)
-    end
+    socket =
+      if is_nil(socket.assigns.update_ref) do
+        plan_update(socket)
+      else
+        cancel_update(socket)
+      end
 
     {:noreply, socket}
   end
@@ -205,7 +213,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_event("apply-accuracy", %{"accuracy" => accuracy}, socket) do
     {accuracy, ""} = Integer.parse(accuracy)
 
-    {:noreply, push_patch_with_params(socket, %{accuracy: accuracy, from: socket.assigns.time_from, to: socket.assigns.time_to})}
+    {:noreply,
+     push_patch_with_params(socket, %{
+       accuracy: accuracy,
+       from: socket.assigns.time_from,
+       to: socket.assigns.time_to
+     })}
   end
 
   def handle_event("top-level-combos", combos, socket),
@@ -222,7 +235,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_event("focus-combo:" <> combo_id, _value, socket) do
     {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
   end
-
 
   @doc """
   Changes UNIX time to ISO 8601 format.
@@ -276,12 +288,19 @@ defmodule Membrane.DashboardWeb.DashboardLive do
           {:ok, {charts, data, paths}} = ChartsUpdate.query(assigns, time_from, time_to)
           send(live_view_pid, {:charts_update, charts, data, paths})
         else
-          {:ok, charts, paths} = ChartsFull.query(assigns.metrics, time_from, time_to, assigns.accuracy)
+          {:ok, charts, paths} =
+            ChartsFull.query(assigns.metrics, time_from, time_to, assigns.accuracy)
+
           data = charts |> Enum.map(& &1[:data])
           send(live_view_pid, {:charts_data, charts, data, paths})
         end
 
-        alive_pipelines = Membrane.Dashboard.PipelineMarking.list_alive_pipelines(time_to |> DateTime.from_unix(:millisecond) |> elem(1))
+        alive_pipelines =
+          Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
+            time_to
+            |> DateTime.from_unix(:millisecond)
+            |> elem(1)
+          )
 
         send(live_view_pid, {:alive_pipelines, alive_pipelines})
 

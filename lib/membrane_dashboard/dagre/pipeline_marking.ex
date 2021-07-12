@@ -19,19 +19,25 @@ defmodule Membrane.Dashboard.PipelineMarking do
         select: el.path
       )
       |> Repo.all()
-      |> Enum.map(& %{
-        time: NaiveDateTime.utc_now(),
-        path: &1,
-        terminated: true
-      })
+      |> Enum.map(
+        &%{
+          time: NaiveDateTime.utc_now(),
+          path: &1,
+          terminated: true
+        }
+      )
 
     Repo.insert_all("elements", elements)
   end
 
   def list_alive_pipelines(time_to) do
-    from(el in "elements", group_by: el.path, having: count(el.time) == 1 and min(el.time) < ^time_to, select: el.path)
+    from(el in "elements",
+      group_by: el.path,
+      having: count(el.time) == 1 and min(el.time) < ^time_to,
+      select: el.path
+    )
     |> Repo.all()
-    |> Enum.map(& &1 |> String.split("/") |> List.first())
+    |> Enum.map(&(&1 |> String.split("/") |> List.first()))
     |> MapSet.new()
     |> MapSet.to_list()
   end
