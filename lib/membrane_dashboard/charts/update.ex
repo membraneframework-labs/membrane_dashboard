@@ -178,25 +178,22 @@ defmodule Membrane.Dashboard.Charts.Update do
   # returns paths from database query result which were not present before update
   defp get_new_paths(old_paths, rows) do
     rows
-    |> Enum.map(fn [_time, path, _size] -> path end)
-    |> Enum.uniq()
-    |> Enum.filter(fn path -> not Enum.member?(old_paths, path) end)
+    |> MapSet.new(fn [_time, path, _size] -> path end)
+    |> MapSet.difference(MapSet.new(old_paths))
+    |> MapSet.to_list()
   end
 
   # returns pair with:
   # - list of uPlot Series with labels (maps: %{label: path_name})
   # - list filled with nils for every new series (so list of lists)
   defp create_new_series(accuracy, time_from, time_to, new_paths) do
+    nils = for _ <- 1..timeline_interval_size(time_from, time_to, accuracy), do: nil
+    data = for _ <- 1..length(new_paths), do: nils
+
     series =
       new_paths
-      |> Enum.map(fn path_name -> [{:label, path_name}] end)
-      |> Enum.map(&Enum.into(&1, %{}))
+      |> Enum.map(&%{label: &1})
 
-    all_nils =
-      create_interval(time_from, time_to, accuracy)
-      |> get_all_nils()
-
-    data = Enum.map(new_paths, fn _path -> all_nils end)
     {series, data}
   end
 
@@ -208,31 +205,31 @@ defmodule Membrane.Dashboard.Charts.Update do
   # - first list contains timestamps
   # - next lists contains paths data
   defp extract_new_data(metric, old_data, accuracy, time_from, time_to, rows, paths) do
-    interval = create_interval(time_from, time_to, accuracy)
+    interval = timeline_interval(time_from, time_to, accuracy)
 
     data_by_paths =
       cond do
-        metric in ["caps", "event"] -> to_series(rows, interval, :update, old_data, paths)
-        true -> to_series(rows, interval)
+        metric in ["caps", "event"] -> to_series(rows, interval, :cumulative, old_data, paths)
+        metric in ["buffer", "bitrate"] -> to_series(rows, interval, :changes_per_second)
+        true -> to_series(rows, interval, :simple)
       end
       |> Enum.into(%{})
 
-    all_nils = get_all_nils(interval)
-    data = Enum.map(paths, fn path -> Map.get(data_by_paths, path, all_nils) end)
+    nils = for _ <- 1..length(interval), do: nil
+    data = Enum.map(paths, &Map.get(data_by_paths, &1, nils))
 
     [interval | data]
   end
-
-  # returns list of nils: one `nil` for every timestamp in the `interval`
-  defp get_all_nils(interval),
-    do: for(_ <- 1..length(interval), do: nil)
 
   # appends new data for every series
   defp append_data([], []),
     do: []
 
-  defp append_data([one_series_data | rest], [new_one_series_data | new_rest]),
-    do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
+  # defp append_data([one_series_data | rest], [new_one_series_data | new_rest]),
+  #   do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
+
+  defp append_data(old_series, new_series),
+    do: Enum.zip(old_series, new_series) |> Enum.map(fn {old, new} -> old ++ new end)
 
   # from [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}
   defp unzip3([]),

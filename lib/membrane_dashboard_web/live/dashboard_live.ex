@@ -8,7 +8,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   require Logger
 
-  @metrics ["caps", "event", "store", "take_and_demand"]
+  @metrics ["caps", "event", "store", "take_and_demand", "buffer", "queue_len", "bitrate"]
 
   @initial_time_offset 60
   @initial_accuracy 100
@@ -226,10 +226,18 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("select-alive-pipeline:" <> pipeline, _value, socket) do
     if socket.assigns.pipeline_marking_active do
-      Membrane.Dashboard.PipelineMarking.mark_dead(pipeline)
+      with {inserted, nil} when inserted > 0 <-
+             Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
+        {:noreply,
+         assign(socket,
+           pipeline_marking_active: false,
+           alive_pipelines: socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
+         )}
+      else
+        _ ->
+          {:noreply, assign(socket, pipeline_marking_active: false)}
+      end
     end
-
-    {:noreply, assign(socket, pipeline_marking_active: false)}
   end
 
   def handle_event("focus-combo:" <> combo_id, _value, socket) do

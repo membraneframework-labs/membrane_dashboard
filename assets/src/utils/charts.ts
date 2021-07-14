@@ -1,6 +1,7 @@
 /* eslint new-cap: ["error", { "newIsCapExceptions": ["uPlot"] }] */
 
 import uPlot, { AlignedData } from "uplot";
+
 import { getXTicksConfig } from "../utils/chartsXTicksConfig";
 
 const metricToTitle: Record<string, string> = {
@@ -8,6 +9,9 @@ const metricToTitle: Record<string, string> = {
   event: "Processed events",
   store: "Input buffer size inside store/3",
   take_and_demand: "Input buffer size inside take_and_demand/4",
+  queue_len: "Message queue size (measured during buffer callback)",
+  buffer: "Processed buffers per second (measured during buffer callback)",
+  bitrate: "Processed bytes per second (measured during buffer callback)"
 };
 
 export function createCharts(

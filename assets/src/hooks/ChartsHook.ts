@@ -21,6 +21,7 @@ interface RefreshData {
   data: ChartData[];
 }
 
+
 const ChartsHook = {
   destroyed(this: Hook) {
     // TODO: add removing charts when hooks gets destroyed (happens sometimes but don't know why yet)
@@ -38,6 +39,13 @@ const ChartsHook = {
         const chart = createCharts(this.el, width, metric);
         this.charts.push(chart);
       }
+    });
+
+    window.addEventListener("resize", () => {
+      const size = getSize();
+      this.charts.forEach(chart => {
+        chart.setSize({ ...size, height: chart.height });
+      });
     });
 
     // full charts update
@@ -61,10 +69,12 @@ const ChartsHook = {
         for (const series of chartsData[i].series) {
           const color = randomColor();
           series.stroke = color;
-          series.paths = (_) => null;
+          series.spanGaps = true;
+          // series.paths = (_) => null;
           series.points = {
-            space: 0,
-            fill: color,
+            // space: 0,
+            // fill: color,
+            width: 1 / window.devicePixelRatio,
           };
           this.charts[i].addSeries(series);
         }
@@ -106,6 +116,13 @@ function randomHexNumber(min: number, max: number): string {
     Math.floor(min / 16);
   const second = Math.floor(Math.random() * 16);
   return first.toString(16) + second.toString(16);
+}
+
+function getSize() {
+  return {
+    width: window.innerWidth - 100,
+    height: window.innerHeight - 200,
+  };
 }
 
 export default ChartsHook;

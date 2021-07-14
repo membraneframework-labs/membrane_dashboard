@@ -2,7 +2,7 @@ defmodule Membrane.Dashboard.Charts.Full do
   @moduledoc """
   Module responsible for preparing data for uPlot charts when they are being entirely reloaded.
 
-  Every chart visualizes one particular metric of pipelines. Chart data returned 
+  Every chart visualizes one particular metric of pipelines. Chart data returned
   by query is a list of maps (one for every chart) which consist of:
   - series - list of maps with labels. Used as legend in uPlot;
   - data - list of lists. Represents points on the chart. First list contains timestamps in UNIX time (x axis ticks).
@@ -48,12 +48,13 @@ defmodule Membrane.Dashboard.Charts.Full do
 
   # returns data for one metric for the given time interval and `accuracy` (all in milliseconds)
   defp get_chart_data(metric, rows, time_from, time_to, accuracy) do
-    interval = create_interval(time_from, time_to, accuracy)
+    interval = timeline_interval(time_from, time_to, accuracy)
 
     data_by_paths =
       cond do
-        metric in ["caps", "event"] -> to_series(rows, interval, :full)
-        true -> to_series(rows, interval)
+        metric in ["caps", "event"] -> to_series(rows, interval, :cumulative)
+        metric in ["buffer", "bitrate"] -> to_series(rows, interval, :changes_per_second)
+        true -> to_series(rows, interval, :simple)
       end
 
     chart_data = %{
