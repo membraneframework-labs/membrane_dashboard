@@ -70,10 +70,7 @@ const ChartsHook = {
           const color = randomColor();
           series.stroke = color;
           series.spanGaps = true;
-          // series.paths = (_) => null;
           series.points = {
-            // space: 0,
-            // fill: color,
             width: 1 / window.devicePixelRatio,
           };
           this.charts[i].addSeries(series);
@@ -92,10 +89,9 @@ const ChartsHook = {
         for (const series of chartsData[i].series) {
           const color = randomColor();
           series.stroke = color;
-          series.paths = (_) => null;
+          series.spanGaps = true;
           series.points = {
-            space: 0,
-            fill: color,
+            width: 1 / window.devicePixelRatio,
           };
           this.charts[i].addSeries(series);
         }
