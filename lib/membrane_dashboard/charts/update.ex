@@ -209,9 +209,14 @@ defmodule Membrane.Dashboard.Charts.Update do
 
     data_by_paths =
       cond do
-        metric in ["caps", "event"] -> to_series(rows, interval, :cumulative, old_data, paths)
-        metric in ["buffer", "bitrate"] -> to_series(rows, interval, :changes_per_second)
-        true -> to_series(rows, interval, :simple)
+        metric in ["caps", "event"] ->
+          to_cumulative_series(rows, interval, old_data, paths)
+
+        metric in ["buffer", "bitrate"] ->
+          to_changes_per_second_series(rows, interval, old_data, paths)
+
+        true ->
+          to_simple_series(rows, interval)
       end
       |> Enum.into(%{})
 

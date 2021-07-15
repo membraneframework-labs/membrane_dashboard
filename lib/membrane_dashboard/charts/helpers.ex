@@ -6,8 +6,10 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   import Membrane.Dashboard.Helpers
   require Logger
 
-  @type postgrex_result_rows_t :: [[term()] | binary()] | nil
+  @type rows_t :: [[term()]]
   @type series_type_t :: :simple | :cumulative | :changes_per_second
+  @type interval_t :: [float()]
+  @type series_t :: [{path :: String.t(), data :: list(integer())}]
 
   @doc """
   Returns query to select all measurements from database for given accuracy and time range (both in milliseconds).
@@ -39,8 +41,8 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @doc """
   Given rows from the result of `Postgrex.Result` structure, returns map: `%{metric => rows}`.
   """
-  @spec group_rows_by_metrics(postgrex_result_rows_t()) :: %{
-          String.t() => postgrex_result_rows_t()
+  @spec group_rows_by_metrics(rows_t()) :: %{
+          String.t() => rows_t()
         }
   def group_rows_by_metrics(rows) do
     Enum.group_by(
@@ -94,19 +96,26 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with
   values (one value for every timestamp in `interval`).
   """
-  @spec to_series(postgrex_result_rows_t(), [float()], series_type_t()) :: [
-          {String.t(), [non_neg_integer()]}
-        ]
-  def to_series(rows, interval, :simple) do
+  @spec to_simple_series(rows_t(), [float()]) :: series_t()
+  def to_simple_series(rows, interval) do
     rows
     |> rows_to_data_by_paths()
     |> process_simple_series(interval)
   end
 
-  def to_series(rows, interval, :changes_per_second) do
+  @spec to_changes_per_second_series(rows_t(), interval_t(), [[integer()]], [String.t()]) ::
+          series_t()
+  def to_changes_per_second_series(rows, interval, old_data \\ nil, paths \\ nil) do
+    initial_accumulators =
+      if is_list(old_data) and is_list(paths) do
+        get_changes_per_second_initial_accumulators(old_data, paths)
+      else
+        %{}
+      end
+
     rows
     |> rows_to_data_by_paths()
-    |> process_changes_per_second_series(interval)
+    |> process_changes_per_second_series(interval, initial_accumulators)
   end
 
   @doc """
@@ -119,10 +128,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Returns list of tuples `{path, data}`, where `path` is pipeline element path and data is a list with values (one value for every timestamp in `interval`).
   Data is altered in the way that every non-nil value is a a cumulative value of given metric since the beginning of live update.
   """
-  @spec to_series(postgrex_result_rows_t(), [float()], series_type_t(), [[non_neg_integer()]], [
-          String.t()
-        ]) :: [{String.t(), [non_neg_integer()]}]
-  def to_series(rows, interval, :cumulative, old_data \\ nil, paths \\ nil) do
+  def to_cumulative_series(rows, interval, old_data \\ nil, paths \\ nil) do
     data_by_paths = rows_to_data_by_paths(rows)
 
     initial_accumulators =
@@ -177,12 +183,14 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     end)
   end
 
-  defp process_changes_per_second_series(data_by_paths, interval) do
+  defp process_changes_per_second_series(data_by_paths, interval, initial_accumulators) do
     data_by_paths
     |> Enum.map(fn {path, data} ->
+      {init_sum, init_range} = Map.get(initial_accumulators, path, {0, []})
+
       {_sum, _range, processed_data} =
         data
-        |> Enum.reduce({0, [], []}, fn {time, value}, {sum_so_far, range, acc} ->
+        |> Enum.reduce({init_sum, init_range, []}, fn {time, value}, {sum_so_far, range, acc} ->
           {to_stay, to_drop} =
             range
             |> Enum.split_while(fn {old_time, _} ->
@@ -213,6 +221,37 @@ defmodule Membrane.Dashboard.Charts.Helpers do
         {:cont, reduce_time_values.(time, values), nil}
       end
     )
+  end
+
+  # this looks like shit...
+  def get_changes_per_second_initial_accumulators([interval | old_data], paths) do
+    interval = Enum.reverse(interval)
+    [last_time | _] = interval
+
+    accumulators =
+      old_data
+      |> Enum.map(fn data ->
+        acc =
+          interval
+          |> Enum.zip(Enum.reverse(data))
+          |> Enum.take_while(fn {time, _value} ->
+            last_time - time < 1.0
+          end)
+          |> Enum.reject(fn
+            {_time, nil} -> true
+            _ -> false
+          end)
+
+        {Enum.reduce(acc, 0, fn {_time, value}, acc -> value + acc end), acc}
+      end)
+
+    new_paths_count = length(paths) - length(accumulators)
+
+    accumulators = accumulators ++ for _ <- 1..new_paths_count, do: {0, []}
+
+    paths
+    |> Enum.zip(accumulators)
+    |> Enum.into(%{})
   end
 
   # extracts initial numbers of processed metrics for update data from `old_data`

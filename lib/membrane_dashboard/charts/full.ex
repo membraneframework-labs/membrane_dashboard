@@ -52,9 +52,9 @@ defmodule Membrane.Dashboard.Charts.Full do
 
     data_by_paths =
       cond do
-        metric in ["caps", "event"] -> to_series(rows, interval, :cumulative)
-        metric in ["buffer", "bitrate"] -> to_series(rows, interval, :changes_per_second)
-        true -> to_series(rows, interval, :simple)
+        metric in ["caps", "event"] -> to_cumulative_series(rows, interval)
+        metric in ["buffer", "bitrate"] -> to_changes_per_second_series(rows, interval)
+        true -> to_simple_series(rows, interval)
       end
 
     chart_data = %{
