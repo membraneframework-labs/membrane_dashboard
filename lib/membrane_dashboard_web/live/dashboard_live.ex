@@ -113,12 +113,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     {:noreply, push_event(socket, "charts_init", %{data: data})}
   end
 
-  def handle_info({event, charts, data, paths}, socket)
+  def handle_info({event, charts, paths, accumulators}, socket)
       when event in [:charts_data, :charts_update] do
     socket =
       socket
       |> push_event(Atom.to_string(event), %{data: charts})
-      |> assign(data: data, paths: paths)
+      |> assign(data: Enum.map(charts, & &1.data), paths: paths, data_accumulators: accumulators)
 
     {:noreply, socket}
   end
@@ -293,14 +293,14 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         send(live_view_pid, {:dagre_data, dagre})
 
         if mode == :update do
-          {:ok, {charts, data, paths}} = ChartsUpdate.query(assigns, time_from, time_to)
-          send(live_view_pid, {:charts_update, charts, data, paths})
+          {:ok, {charts, paths, accumulators}} = ChartsUpdate.query(assigns, time_from, time_to)
+
+          send(live_view_pid, {:charts_update, charts, paths, accumulators})
         else
-          {:ok, charts, paths} =
+          {:ok, {charts, paths, accumulators}} =
             ChartsFull.query(assigns.metrics, time_from, time_to, assigns.accuracy)
 
-          data = charts |> Enum.map(& &1[:data])
-          send(live_view_pid, {:charts_data, charts, data, paths})
+          send(live_view_pid, {:charts_data, charts, paths, accumulators})
         end
 
         alive_pipelines =
