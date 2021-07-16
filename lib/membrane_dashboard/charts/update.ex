@@ -40,11 +40,12 @@ defmodule Membrane.Dashboard.Charts.Update do
   alias Membrane.Dashboard.Charts
 
   @type update_context_t :: %{
+          accuracy: non_neg_integer(),
           metrics: [String.t()],
           paths: [String.t()],
           data: [[integer()]],
           data_accumulators: [any()],
-          time_to: float()
+          time_to: non_neg_integer()
         }
 
   @doc """
@@ -57,9 +58,10 @@ defmodule Membrane.Dashboard.Charts.Update do
           context :: update_context_t(),
           time_from :: non_neg_integer(),
           time_to :: non_neg_integer()
-        ) ::
-          {:ok,
-           {[Charts.chart_data_t()], [Charts.chart_paths_t()], [Charts.chart_accumulator_t()]}}
+        ) :: any()
+  # {:ok,
+  #  {[Charts.chart_data_t()], [Charts.chart_paths_t()], [Charts.chart_accumulator_t()]}} | {:error, any()}
+  # {:ok, {any(), any(), any()}} | {:error, any()}
   def query(context, time_from, time_to) do
     %{
       metrics: metrics,
@@ -248,9 +250,6 @@ defmodule Membrane.Dashboard.Charts.Update do
   end
 
   # appends new data for every series
-  defp append_data([], []),
-    do: []
-
   defp append_data(old_series, new_series),
     do: Enum.zip(old_series, new_series) |> Enum.map(fn {old, new} -> old ++ new end)
 end
