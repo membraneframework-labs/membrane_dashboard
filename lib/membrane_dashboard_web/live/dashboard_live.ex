@@ -45,6 +45,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
         # real-time update timer
         update_ref: nil,
+        update: false,
 
         # data query task ref
         query_task_ref: nil,
@@ -171,18 +172,15 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
     with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
-      # FIXME: why the hell there is update false?
-      {:noreply, push_patch_with_params(socket, %{from: from, to: to, update: false})}
+      {:noreply,
+       push_patch_with_params(socket, %{from: from, to: to, update: false}) |> cancel_update()}
     else
-      # this flash is rather useless
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
   end
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      socket = assign(socket, next_update_time: now(@min_between_updates_interval))
-
       {:noreply,
        push_patch_with_params(socket, %{
          from: now(-60 * minutes_as_int),
@@ -191,19 +189,19 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update_range: 60 * minutes_as_int
        })}
     else
-      _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
+      _ -> {:noreply, socket |> put_flash(:error, ~s(Invalid format of "Last x minutes"))}
     end
   end
 
   def handle_event("toggle-update-mode", _value, socket) do
     socket =
-      if is_nil(socket.assigns.update_ref) do
-        plan_update(socket)
-      else
+      if socket.assigns.update do
         cancel_update(socket)
+      else
+        plan_update(socket)
       end
 
-    {:noreply, socket}
+    {:noreply, assign(socket, update: !socket.assigns.update)}
   end
 
   def handle_event("toggle-pipeline-marking", _value, socket) do

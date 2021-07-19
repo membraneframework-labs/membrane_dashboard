@@ -10,7 +10,7 @@
       <button value="1" type="button" phx-click="last-x-min">Last 1 min</button>
       <button value="3" type="button" phx-click="last-x-min">Last 3 min</button>
       <button type="button" phx-click="toggle-update-mode">
-        <%= if not is_nil(@update_ref) do %>
+        <%= if @update do %>
           Stop live update
         <% else %>
           Start live update
@@ -24,7 +24,7 @@
 
   <form phx-submit="apply-accuracy">
     <div class="AccuracyInput">
-        <label>Accuracy</label>
+      <label>Accuracy</label>
       <h6>Be aware that the better accuracy, the longer rendering time.</h6>
       <input id="accuracy" type="number" min="50" value="<%= @accuracy %>" name="accuracy" phx-debounce="blur"/>
       <div id="accuracy-unit">ms</div>
@@ -49,9 +49,9 @@
   <%= if not is_nil(@top_level_combos) and length(@top_level_combos) > 0 do %>
     <h3>Pipelines</h3>
     <div id="top-level-combos" class="DagreCombos">
-        <%= for combo <- @top_level_combos do %>
-          <div data-combo-id="<%= combo["id"] %>" class="Combo" phx-click="focus-combo:<%= combo["id"] %>"><%= combo["label"] %></div>
-        <% end %>
+      <%= for combo <- @top_level_combos do %>
+        <div data-combo-id="<%= combo["id"] %>" class="Combo" phx-click="focus-combo:<%= combo["id"] %>"><%= combo["label"] %></div>
+      <% end %>
     </div>
   <% end %>
 
@@ -59,9 +59,9 @@
     <h3>Pipeline marking</h3>
     <p>It may happen that pipeline terminating has not been registered. Here you can manually mark pipeline as dead.</p>
     <div id="alive-pipelines" class="DagreCombos">
-        <%= for pipeline <- @alive_pipelines do %>
-          <div data-combo-id="<%= pipeline %>" class="Combo <%= if not @pipeline_marking_active, do: "unclickable", else: "" %>" phx-click="select-alive-pipeline:<%= pipeline %>"><%= pipeline %></div>
-        <% end %>
+      <%= for pipeline <- @alive_pipelines do %>
+        <div data-combo-id="<%= pipeline %>" class="Combo <%= if not @pipeline_marking_active, do: "unclickable", else: "" %>" phx-click="select-alive-pipeline:<%= pipeline %>"><%= pipeline %></div>
+      <% end %>
       <div class="<%= if @pipeline_marking_active, do: "PipelineMarkingActive", else: "PipelineMarkingInactive" %>" phx-click="toggle-pipeline-marking">
         <%= if @pipeline_marking_active do %>
           Select pipeline

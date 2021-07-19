@@ -1,12 +1,13 @@
 defmodule Membrane.Dashboard.PipelineMarking do
+  @moduledoc false
+
   import Ecto.Query
 
   alias Membrane.Dashboard.Repo
-
   alias Membrane.Dashboard.Helpers
 
   @doc """
-  Given pipeline prefix tries to mark al elements that belongs to given pipeline dead by creating
+  Given pipeline prefix tries to mark all elements, that belong to the given pipeline, as dead by creating
   entries in `elements` schema.
   """
   @spec mark_dead(String.t()) :: any()
@@ -30,6 +31,10 @@ defmodule Membrane.Dashboard.PipelineMarking do
     Repo.insert_all("elements", elements)
   end
 
+  @doc """
+  Lists all element's paths for elements that have been alive till the `time_to` time.
+  """
+  @spec list_alive_pipelines(NaiveDateTime.t()) :: list(String.t())
   def list_alive_pipelines(time_to) do
     from(el in "elements",
       group_by: el.path,
