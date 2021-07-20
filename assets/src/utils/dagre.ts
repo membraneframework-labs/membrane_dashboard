@@ -37,6 +37,7 @@ export function createDagre(
       type: "rect",
       style: {
         radius: 10,
+        stroke: "white",
       },
       anchorPoints: [
         [0, 0.5],

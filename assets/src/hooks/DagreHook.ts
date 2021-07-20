@@ -31,6 +31,16 @@ const DagreHook = {
       this.graph.updateLayout({ sortByCombo: true });
     });
 
+    document.getElementById("dagre-export-image")?.addEventListener("click", () => {
+      const oldRatio = this.graph.getZoom();
+      // this zoom is needed to make sure downloaded image is sharp
+      this.graph.zoomTo(1.0);
+      this.graph.downloadFullImage("pipelines-graph", "image/png", {
+        padding: [30, 15, 15, 15],
+      });
+      this.graph.zoomTo(oldRatio);
+    });
+
     const canvas = document.querySelector(
       "#dagre-container > canvas"
     )! as HTMLCanvasElement;

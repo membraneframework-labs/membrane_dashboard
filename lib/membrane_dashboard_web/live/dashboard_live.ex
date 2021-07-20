@@ -25,53 +25,54 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def mount(_params, _session, socket) do
     empty_lists = for _metric <- 1..length(@metrics), do: []
 
-    send(self(), {:charts_init, @metrics})
+    if connected?(socket) do
+      send(self(), {:charts_init, @metrics})
+    end
 
     socket =
       socket
-      |> plan_update()
       |> assign(
-        top_level_combos: nil,
-        metrics: @metrics,
-        paths: empty_lists,
-        data: empty_lists,
+        # data query params
         time_from: now(-@initial_time_offset),
         time_to: now(),
         accuracy: @initial_accuracy,
-        update: true,
-        update_range: @initial_time_offset
+        update_range: @initial_time_offset,
+
+        # cached query data
+        metrics: @metrics,
+        paths: empty_lists,
+        data: empty_lists,
+
+        # real-time update timer
+        update_ref: nil,
+        update: false,
+
+        # data query task ref
+        query_task_ref: nil,
+
+        # UI related
+        data_loading: false,
+        pipeline_marking_active: false,
+        top_level_combos: nil,
+        alive_pipelines: []
       )
 
     {:ok, socket}
   end
 
-  # updates charts and reloads dagre when live update is enabled
+  # updates charts and reloads dagree when live update is enabled
   @impl true
   def handle_params(%{"mode" => "update", "from" => from, "to" => to}, _session, socket) do
     empty_lists = for _metric <- 1..length(socket.assigns.metrics), do: []
 
+    # if we have no data assigned then request the full query
     if socket.assigns.data == empty_lists do
       {:noreply, push_patch_with_params(socket, %{from: from, to: to})}
     else
       with true <- connected?(socket),
-           {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket),
-           {:ok, dagre} <- Dagre.query(from, to),
-           {:ok, {charts, data, paths}} <-
-             ChartsUpdate.query(socket, from, to) do
-        send(self(), {:dagre_data, dagre})
-        send(self(), {:charts_update, charts})
-
-        socket =
-          socket
-          |> plan_update()
-          |> assign(paths: paths, data: data, time_from: from, time_to: to)
-
-        {:noreply, socket}
+           {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
+        {:noreply, launch_query_task(socket, socket.assigns, from, to, :update)}
       else
-        {:error, reason} ->
-          Logger.error(reason)
-          {:noreply, plan_update(socket)}
-
         _ ->
           {:noreply, plan_update(socket)}
       end
@@ -84,24 +85,16 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          {from, to} <- extract_time_range(params, socket),
          accuracy <- extract_accuracy(params, socket),
          update <- extract_update_status(params, socket),
-         update_range <- extract_update_time_range(params, socket),
-         {:ok, dagre} <- Dagre.query(from, to),
-         {:ok, charts, paths} <- ChartsFull.query(socket.assigns.metrics, from, to, accuracy) do
-      send(self(), {:dagre_data, dagre})
-      send(self(), {:charts_data, charts})
-
-      data =
-        charts
-        |> Enum.map(fn chart -> chart[:data] end)
-
+         update_range <- extract_update_time_range(params, socket) do
       socket =
         socket
-        |> plan_update()
+        |> launch_query_task(
+          %{metrics: socket.assigns.metrics, accuracy: accuracy},
+          from,
+          to,
+          :full
+        )
         |> assign(
-          paths: paths,
-          data: data,
-          time_from: from,
-          time_to: to,
           accuracy: accuracy,
           update: update,
           update_range: update_range
@@ -109,48 +102,78 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
       {:noreply, socket}
     else
-      {:error, reason} ->
-        Logger.error(reason)
-        {:noreply, plan_update(socket)}
-
-      _ ->
-        {:noreply, plan_update(socket)}
+      something ->
+        Logger.error("Encountered invalid arguments when handling params: #{inspect(something)}")
+        {:noreply, socket}
     end
   end
 
   # inits, realoads or updates charts and reloads dagre
   @impl true
-  def handle_info({:charts_init, data}, socket),
-    do: {:noreply, push_event(socket, "charts_init", %{data: data})}
+  def handle_info({:charts_init, data}, socket) do
+    {:noreply, push_event(socket, "charts_init", %{data: data})}
+  end
 
-  def handle_info({:charts_data, data}, socket),
-    do: {:noreply, push_event(socket, "charts_data", %{data: data})}
+  def handle_info({event, charts, data, paths}, socket)
+      when event in [:charts_data, :charts_update] do
+    socket =
+      socket
+      |> push_event(Atom.to_string(event), %{data: charts})
+      |> assign(data: data, paths: paths)
 
-  def handle_info({:charts_update, data}, socket),
-    do: {:noreply, push_event(socket, "charts_update", %{data: data})}
+    {:noreply, socket}
+  end
 
-  def handle_info({:dagre_data, data}, socket),
-    do: {:noreply, push_event(socket, "dagre_data", %{data: data})}
+  def handle_info({:alive_pipelines, alive_pipelines}, socket) do
+    {:noreply, assign(socket, alive_pipelines: alive_pipelines)}
+  end
+
+  # this message is the last message sent from query task
+  def handle_info({:update_query_time, time_from, time_to}, socket) do
+    socket =
+      socket
+      |> assign(time_from: time_from, time_to: time_to)
+      |> case do
+        # if the timer had not been set then do nothing
+        %{assigns: %{update_ref: nil}} = socket ->
+          socket
+
+        socket ->
+          socket |> plan_update()
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:dagre_data, data}, socket) do
+    {:noreply, push_event(socket, "dagre_data", %{data: data})}
+  end
+
+  def handle_info({:set_data_loading, loading}, socket) do
+    {:noreply, assign(socket, data_loading: loading)}
+  end
 
   def handle_info(:update, socket) do
-    if socket.assigns.update and socket.assigns.next_update_time <= now() do
-      socket = assign(socket, next_update_time: now(@min_between_updates_interval))
+    {:noreply,
+     push_patch_with_params(socket, %{
+       mode: :update,
+       from: now(-socket.assigns.update_range),
+       to: now()
+     })}
+  end
 
-      {:noreply,
-       push_patch_with_params(socket, %{
-         mode: :update,
-         from: now(-socket.assigns.update_range),
-         to: now()
-       })}
-    else
-      {:noreply, socket}
-    end
+  def handle_info(
+        {:DOWN, query_task_ref, :process, _pid, reason},
+        %{assigns: %{query_task_ref: query_task_ref}} = socket
+      ) do
+    {:noreply, assign(socket, query_task_ref: nil)}
   end
 
   @impl true
   def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
     with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
-      {:noreply, push_patch_with_params(socket, %{from: from, to: to, update: false})}
+      {:noreply,
+       push_patch_with_params(socket, %{from: from, to: to, update: false}) |> cancel_update()}
     else
       {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
     end
@@ -158,8 +181,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      socket = assign(socket, next_update_time: now(@min_between_updates_interval))
-
       {:noreply,
        push_patch_with_params(socket, %{
          from: now(-60 * minutes_as_int),
@@ -168,35 +189,50 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update_range: 60 * minutes_as_int
        })}
     else
-      _ -> {:noreply, socket |> put_flash(:error, "Invalid format of \"Last x minutes\"")}
+      _ -> {:noreply, socket |> put_flash(:error, ~s(Invalid format of "Last x minutes"))}
     end
   end
 
-  def handle_event("stop-update", _value, socket) do
-    {:noreply, assign(socket, update: false)}
+  def handle_event("toggle-update-mode", _value, socket) do
+    socket =
+      if socket.assigns.update do
+        cancel_update(socket)
+      else
+        plan_update(socket)
+      end
+
+    {:noreply, assign(socket, update: !socket.assigns.update)}
+  end
+
+  def handle_event("toggle-pipeline-marking", _value, socket) do
+    {:noreply, assign(socket, pipeline_marking_active: !socket.assigns.pipeline_marking_active)}
   end
 
   def handle_event("apply-accuracy", %{"accuracy" => accuracy}, socket) do
-    with {:ok, accuracy} <- check_accuracy(accuracy) do
-      {:noreply, push_patch_with_params(socket, %{accuracy: accuracy})}
-    else
-      {:error, _reason} -> {:noreply, socket}
-    end
-  end
+    {accuracy, ""} = Integer.parse(accuracy)
 
-  def handle_event("validate-accuracy", %{"accuracy" => accuracy}, socket) do
-    with {:ok, _accuracy} <- check_accuracy(accuracy) do
-      {:noreply, socket}
-    else
-      {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
-    end
+    {:noreply,
+     push_patch_with_params(socket, %{
+       accuracy: accuracy,
+       from: socket.assigns.time_from,
+       to: socket.assigns.time_to
+     })}
   end
 
   def handle_event("top-level-combos", combos, socket),
     do: {:noreply, assign(socket, top_level_combos: combos)}
 
-  def handle_event("focus-combo:" <> combo_id, _value, socket),
-    do: {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
+  def handle_event("select-alive-pipeline:" <> pipeline, _value, socket) do
+    if socket.assigns.pipeline_marking_active do
+      Membrane.Dashboard.PipelineMarking.mark_dead(pipeline)
+    end
+
+    {:noreply, assign(socket, pipeline_marking_active: false)}
+  end
+
+  def handle_event("focus-combo:" <> combo_id, _value, socket) do
+    {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
+  end
 
   @doc """
   Changes UNIX time to ISO 8601 format.
@@ -219,8 +255,59 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # returns socket with assigned threshold time for update - update message must appear after it to perform update
   # `@min_between_updates_interval` must be smaller than `@update_time` to assure that update can be performed after receiving that message
   defp plan_update(socket) do
-    Process.send_after(self(), :update, @update_time * 1000)
-    assign(socket, next_update_time: now(@min_between_updates_interval))
+    unless is_nil(socket.assigns.update_ref) do
+      Process.cancel_timer(socket.assigns.update_ref)
+    end
+
+    ref = Process.send_after(self(), :update, @update_time * 1000)
+    assign(socket, update_ref: ref)
+  end
+
+  defp cancel_update(socket) do
+    unless is_nil(socket.assigns.update_ref) do
+      Process.cancel_timer(socket.assigns.update_ref)
+
+      assign(socket, update_ref: nil)
+    else
+      socket
+    end
+  end
+
+  defp launch_query_task(socket, assigns, time_from, time_to, mode) do
+    live_view_pid = self()
+
+    task_ref =
+      spawn(fn ->
+        send(live_view_pid, {:set_data_loading, true})
+        {:ok, dagre} = Dagre.query(time_from, time_to)
+        send(live_view_pid, {:dagre_data, dagre})
+
+        if mode == :update do
+          {:ok, {charts, data, paths}} = ChartsUpdate.query(assigns, time_from, time_to)
+          send(live_view_pid, {:charts_update, charts, data, paths})
+        else
+          {:ok, charts, paths} =
+            ChartsFull.query(assigns.metrics, time_from, time_to, assigns.accuracy)
+
+          data = charts |> Enum.map(& &1[:data])
+          send(live_view_pid, {:charts_data, charts, data, paths})
+        end
+
+        alive_pipelines =
+          Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
+            time_to
+            |> DateTime.from_unix!(:millisecond)
+            |> DateTime.to_naive()
+          )
+
+        send(live_view_pid, {:alive_pipelines, alive_pipelines})
+
+        send(live_view_pid, {:update_query_time, time_from, time_to})
+        send(live_view_pid, {:set_data_loading, false})
+      end)
+      |> Process.monitor()
+
+    assign(socket, query_task_ref: task_ref)
   end
 
   # returns pair of UNIX time values made from strings in params or extracted from assigns in socket
@@ -246,7 +333,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   defp extract_update_status(_params, socket),
-    do: socket.assigns.update
+    do: socket.assigns.update_ref != nil
 
   # returns number of seconds in charts' time range; important for live update
   defp extract_update_time_range(%{"update_range" => update_range}, _socket),
@@ -267,17 +354,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       end
     else
       _ -> {:error, "Invalid time range format"}
-    end
-  end
-
-  # checks whether the accuracy is a positive integer
-  defp check_accuracy(accuracy) do
-    {int, rest} = Integer.parse(accuracy)
-
-    cond do
-      int < 1 -> {:error, "Accuracy have to be a positive number"}
-      rest != "" -> {:error, "Accuracy have to be an integer"}
-      true -> {:ok, int}
     end
   end
 
