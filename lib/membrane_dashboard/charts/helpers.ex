@@ -155,24 +155,38 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   defp process_changes_per_second_series(data_by_paths, interval, initial_accumulators) do
     data_by_paths
     |> Enum.map(fn {path, data} ->
-      {init_sum, init_range} = Map.get(initial_accumulators, path, {0, []})
+      initial_accumulator = Map.get(initial_accumulators, path, {0, []})
 
-      {sum, range, processed_data} =
-        data
-        |> Enum.reduce({init_sum, init_range, []}, fn {time, value}, {sum_so_far, range, acc} ->
-          {to_stay, to_drop} =
-            range
-            |> Enum.split_while(fn {old_time, _} ->
-              time - old_time < 1.0
-            end)
+      {processed_data, accumulator} =
+        calculate_changes_per_second_for_data(data, initial_accumulator)
 
-          sum_so_far = sum_so_far - (Enum.map(to_drop, &elem(&1, 1)) |> Enum.sum()) + value
-
-          {sum_so_far, [{time, value} | to_stay], [{time, sum_so_far} | acc]}
-        end)
-
-      {{path, fill_with_nils(Map.new(processed_data), interval)}, {sum, range}}
+      {{path, fill_with_nils(Map.new(processed_data), interval)}, accumulator}
     end)
+  end
+
+  # it basically traverses the list with data and for each measurement it replaces the value
+  # with a sum calculated for a duration of one second till given timestamp
+  #
+  # accumulator consists of the last sum and measurements range of the last second before first timestamp in given data list,
+  # it is needed in case when given data is an update data and the sum needs to be continuous  with previous data
+  defp calculate_changes_per_second_for_data(data, initial_accumulator) do
+    {init_sum, init_range} = initial_accumulator
+
+    {sum, range, processed_data} =
+      data
+      |> Enum.reduce({init_sum, init_range, []}, fn {time, value}, {sum_so_far, range, acc} ->
+        {to_stay, to_drop} =
+          range
+          |> Enum.split_while(fn {old_time, _} ->
+            time - old_time < 1.0
+          end)
+
+        sum_so_far = sum_so_far - (Enum.map(to_drop, &elem(&1, 1)) |> Enum.sum()) + value
+
+        {sum_so_far, [{time, value} | to_stay], [{time, sum_so_far} | acc]}
+      end)
+
+    {processed_data, {sum, range}}
   end
 
   # chunks measurements by the time (due to accuracy several measurements can have the same timestamp but only

@@ -37,7 +37,6 @@ defmodule Membrane.Dashboard.Charts.Update do
   import Membrane.Dashboard.Charts.Helpers
 
   alias Membrane.Dashboard.Repo
-  alias Membrane.Dashboard.Charts
 
   @type update_context_t :: %{
           accuracy: non_neg_integer(),
@@ -74,26 +73,31 @@ defmodule Membrane.Dashboard.Charts.Update do
 
     update_from = last_time_to + accuracy
 
-    with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, update_from, time_to) |> Repo.query() do
-      rows_by_metrics = group_rows_by_metrics(rows)
+    case create_sql_query(accuracy, update_from, time_to) |> Repo.query() do
+      {:ok, %Postgrex.Result{rows: rows}} ->
+        rows_by_metrics = group_rows_by_metrics(rows)
 
-      query_recursively(
-        metrics,
-        rows_by_metrics,
-        paths,
-        data,
-        data_accumulators,
-        accuracy,
-        time_from,
-        update_from,
-        last_time_to,
-        time_to
-      )
-      |> unzip3()
-      |> then(&{:ok, &1})
-    else
-      {:error, _reason} -> {:error, "Cannot fetch update data for charts"}
+        params = %{
+          accuracy: accuracy,
+          time_from: time_from,
+          update_from: update_from,
+          last_time_to: last_time_to,
+          time_to: time_to
+        }
+
+        query_recursively(
+          metrics,
+          rows_by_metrics,
+          paths,
+          data,
+          data_accumulators,
+          params
+        )
+        |> unzip3()
+        |> then(&{:ok, &1})
+
+      {:error, _reason} ->
+        {:error, "Cannot fetch update data for charts"}
     end
   end
 
@@ -105,11 +109,7 @@ defmodule Membrane.Dashboard.Charts.Update do
          [],
          [],
          [],
-         _accuracy,
-         _time_from,
-         _update_from,
-         _last_time_to,
-         _time_to
+         _params
        ),
        do: []
 
@@ -119,11 +119,7 @@ defmodule Membrane.Dashboard.Charts.Update do
          [metric_paths | paths],
          [metric_data | data],
          [metric_accumulator | accumulators],
-         accuracy,
-         time_from,
-         update_from,
-         last_time_to,
-         time_to
+         params
        ) do
     [
       one_chart_query(
@@ -132,11 +128,7 @@ defmodule Membrane.Dashboard.Charts.Update do
         metric_paths,
         metric_data,
         metric_accumulator,
-        accuracy,
-        time_from,
-        update_from,
-        last_time_to,
-        time_to
+        params
       )
       | query_recursively(
           metrics,
@@ -144,11 +136,7 @@ defmodule Membrane.Dashboard.Charts.Update do
           paths,
           data,
           accumulators,
-          accuracy,
-          time_from,
-          update_from,
-          last_time_to,
-          time_to
+          params
         )
     ]
   end
@@ -159,12 +147,16 @@ defmodule Membrane.Dashboard.Charts.Update do
          paths,
          old_data,
          accumulator,
-         accuracy,
-         time_from,
-         update_from,
-         last_time_to,
-         time_to
+         params
        ) do
+    %{
+      accuracy: accuracy,
+      time_from: time_from,
+      update_from: update_from,
+      last_time_to: last_time_to,
+      time_to: time_to
+    } = params
+
     new_paths = get_new_paths(paths, rows)
     all_paths = paths ++ new_paths
 

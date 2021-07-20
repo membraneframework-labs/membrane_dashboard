@@ -1,4 +1,6 @@
 defmodule Membrane.Dashboard.Helpers do
+  @moduledoc false
+
   @beginning_of_time ~U[1970-01-01 00:00:00Z]
 
   @doc """

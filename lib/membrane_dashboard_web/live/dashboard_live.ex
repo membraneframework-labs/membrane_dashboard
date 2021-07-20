@@ -1,4 +1,7 @@
 defmodule Membrane.DashboardWeb.DashboardLive do
+  @moduledoc """
+  Live view controller for Membrane's dashboard.
+  """
   use Membrane.DashboardWeb, :live_view
 
   alias Membrane.Dashboard.{Dagre, Helpers}
@@ -14,7 +17,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @initial_accuracy 100
 
   @update_time 5
-  @min_between_updates_interval 4
 
   # initially:
   # - time range is the last `@initial_time_offset` seconds
@@ -67,14 +69,16 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
     # if we have no data assigned then request the full query
     if socket.assigns.data == empty_lists do
-      {:noreply, push_patch_with_params(socket, %{from: from, to: to})}
+      push_patch_with_params(socket, %{from: from, to: to}) |> noreply()
     else
       with true <- connected?(socket),
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
-        {:noreply, launch_query_task(socket, socket.assigns, from, to, :update)}
+        launch_query_task(socket, socket.assigns, from, to, :update) |> noreply()
       else
         _ ->
-          {:noreply, plan_update(socket)}
+          socket
+          |> plan_update()
+          |> noreply()
       end
     end
   end
@@ -86,160 +90,177 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          accuracy <- extract_accuracy(params, socket),
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket) do
-      socket =
-        socket
-        |> launch_query_task(
-          %{metrics: socket.assigns.metrics, accuracy: accuracy},
-          from,
-          to,
-          :full
-        )
-        |> assign(
-          accuracy: accuracy,
-          update: update,
-          update_range: update_range
-        )
-
-      {:noreply, socket}
+      socket
+      |> launch_query_task(
+        %{metrics: socket.assigns.metrics, accuracy: accuracy},
+        from,
+        to,
+        :full
+      )
+      |> assign(
+        accuracy: accuracy,
+        update: update,
+        update_range: update_range
+      )
+      |> noreply()
     else
       something ->
         Logger.error("Encountered invalid arguments when handling params: #{inspect(something)}")
-        {:noreply, socket}
+        noreply(socket)
     end
   end
 
   # inits, realoads or updates charts and reloads dagre
   @impl true
   def handle_info({:charts_init, data}, socket) do
-    {:noreply, push_event(socket, "charts_init", %{data: data})}
+    socket
+    |> push_event("charts_init", %{data: data})
+    |> noreply()
   end
 
   def handle_info({event, charts, paths, accumulators}, socket)
       when event in [:charts_data, :charts_update] do
-    socket =
-      socket
-      |> push_event(Atom.to_string(event), %{data: charts})
-      |> assign(data: Enum.map(charts, & &1.data), paths: paths, data_accumulators: accumulators)
-
-    {:noreply, socket}
+    socket
+    |> push_event(Atom.to_string(event), %{data: charts})
+    |> assign(data: Enum.map(charts, & &1.data), paths: paths, data_accumulators: accumulators)
+    |> noreply()
   end
 
   def handle_info({:alive_pipelines, alive_pipelines}, socket) do
-    {:noreply, assign(socket, alive_pipelines: alive_pipelines)}
+    socket
+    |> assign(alive_pipelines: alive_pipelines)
+    |> noreply()
   end
 
   # this message is the last message sent from query task
   def handle_info({:update_query_time, time_from, time_to}, socket) do
-    socket =
-      socket
-      |> assign(time_from: time_from, time_to: time_to)
-      |> case do
-        # if the timer had not been set then do nothing
-        %{assigns: %{update_ref: nil}} = socket ->
-          socket
+    socket
+    |> assign(time_from: time_from, time_to: time_to)
+    |> case do
+      # if the timer had not been set then do nothing
+      %{assigns: %{update_ref: nil}} = socket ->
+        socket
 
-        socket ->
-          socket |> plan_update()
-      end
-
-    {:noreply, socket}
+      socket ->
+        socket |> plan_update()
+    end
+    |> noreply()
   end
 
   def handle_info({:dagre_data, data}, socket) do
-    {:noreply, push_event(socket, "dagre_data", %{data: data})}
+    socket
+    |> push_event("dagre_data", %{data: data})
+    |> noreply()
   end
 
   def handle_info({:set_data_loading, loading}, socket) do
-    {:noreply, assign(socket, data_loading: loading)}
+    socket
+    |> assign(data_loading: loading)
+    |> noreply()
   end
 
   def handle_info(:update, socket) do
-    {:noreply,
-     push_patch_with_params(socket, %{
-       mode: :update,
-       from: now(-socket.assigns.update_range),
-       to: now()
-     })}
+    socket
+    |> push_patch_with_params(%{
+      mode: :update,
+      from: now(-socket.assigns.update_range),
+      to: now()
+    })
+    |> noreply()
   end
 
   def handle_info(
-        {:DOWN, query_task_ref, :process, _pid, reason},
+        {:DOWN, query_task_ref, :process, _pid, _reason},
         %{assigns: %{query_task_ref: query_task_ref}} = socket
       ) do
-    {:noreply, assign(socket, query_task_ref: nil)}
+    socket
+    |> assign(query_task_ref: nil)
+    |> noreply()
   end
 
   @impl true
   def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
-    with {:ok, {from, to}} <- parse_time_range(time_from, time_to) do
-      {:noreply,
-       push_patch_with_params(socket, %{from: from, to: to, update: false}) |> cancel_update()}
-    else
-      {:error, reason} -> {:noreply, socket |> put_flash(:error, reason)}
+    case parse_time_range(time_from, time_to) do
+      {:ok, {from, to}} ->
+        socket
+        |> push_patch_with_params(%{from: from, to: to, update: false})
+        |> cancel_update()
+
+      {:error, reason} ->
+        put_flash(socket, :error, reason)
     end
+    |> noreply()
   end
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
-    with {minutes_as_int, ""} <- Integer.parse(minutes) do
-      {:noreply,
-       push_patch_with_params(socket, %{
-         from: now(-60 * minutes_as_int),
-         to: now(),
-         update: true,
-         update_range: 60 * minutes_as_int
-       })}
-    else
-      _ -> {:noreply, socket |> put_flash(:error, ~s(Invalid format of "Last x minutes"))}
+    case Integer.parse(minutes) do
+      {minutes_as_int, ""} ->
+        push_patch_with_params(socket, %{
+          from: now(-60 * minutes_as_int),
+          to: now(),
+          update: true,
+          update_range: 60 * minutes_as_int
+        })
+
+      _ ->
+        put_flash(socket, :error, ~s(Invalid format of "Last x minutes"))
     end
+    |> noreply()
   end
 
   def handle_event("toggle-update-mode", _value, socket) do
-    socket =
-      if socket.assigns.update do
-        cancel_update(socket)
-      else
-        plan_update(socket)
-      end
-
-    {:noreply, assign(socket, update: !socket.assigns.update)}
+    if socket.assigns.update do
+      cancel_update(socket)
+    else
+      plan_update(socket)
+    end
+    |> assign(update: !socket.assigns.update)
+    |> noreply()
   end
 
   def handle_event("toggle-pipeline-marking", _value, socket) do
-    {:noreply, assign(socket, pipeline_marking_active: !socket.assigns.pipeline_marking_active)}
+    socket
+    |> assign(pipeline_marking_active: !socket.assigns.pipeline_marking_active)
+    |> noreply()
   end
 
   def handle_event("apply-accuracy", %{"accuracy" => accuracy}, socket) do
     {accuracy, ""} = Integer.parse(accuracy)
 
-    {:noreply,
-     push_patch_with_params(socket, %{
-       accuracy: accuracy,
-       from: socket.assigns.time_from,
-       to: socket.assigns.time_to
-     })}
+    socket
+    |> push_patch_with_params(%{
+      accuracy: accuracy,
+      from: socket.assigns.time_from,
+      to: socket.assigns.time_to
+    })
+    |> noreply()
   end
 
   def handle_event("top-level-combos", combos, socket),
-    do: {:noreply, assign(socket, top_level_combos: combos)}
+    do: socket |> assign(top_level_combos: combos) |> noreply()
 
   def handle_event("select-alive-pipeline:" <> pipeline, _value, socket) do
     if socket.assigns.pipeline_marking_active do
-      with {inserted, nil} when inserted > 0 <-
-             Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
-        {:noreply,
-         assign(socket,
-           pipeline_marking_active: false,
-           alive_pipelines: socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
-         )}
-      else
+      case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
+        {inserted, nil} when inserted > 0 ->
+          assign(socket,
+            pipeline_marking_active: false,
+            alive_pipelines: socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
+          )
+
         _ ->
-          {:noreply, assign(socket, pipeline_marking_active: false)}
+          assign(socket, pipeline_marking_active: false)
       end
+    else
+      socket
     end
+    |> noreply()
   end
 
   def handle_event("focus-combo:" <> combo_id, _value, socket) do
-    {:noreply, push_event(socket, "focus_combo", %{id: combo_id})}
+    socket
+    |> push_event("focus_combo", %{id: combo_id})
+    |> noreply()
   end
 
   @doc """
@@ -260,8 +281,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   # next update will be in `@update_time` seconds
-  # returns socket with assigned threshold time for update - update message must appear after it to perform update
-  # `@min_between_updates_interval` must be smaller than `@update_time` to assure that update can be performed after receiving that message
   defp plan_update(socket) do
     unless is_nil(socket.assigns.update_ref) do
       Process.cancel_timer(socket.assigns.update_ref)
@@ -272,12 +291,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   defp cancel_update(socket) do
-    unless is_nil(socket.assigns.update_ref) do
+    if is_nil(socket.assigns.update_ref) do
+      socket
+    else
       Process.cancel_timer(socket.assigns.update_ref)
 
       assign(socket, update_ref: nil)
-    else
-      socket
     end
   end
 
@@ -368,4 +387,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # executes push_patch/2 function with given `params` to invoke handle_params/3
   defp push_patch_with_params(socket, params),
     do: push_patch(socket, to: Routes.live_path(socket, __MODULE__, params))
+
+  defp noreply(socket) do
+    {:noreply, socket}
+  end
 end

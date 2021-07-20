@@ -25,17 +25,17 @@ defmodule Membrane.Dashboard.Charts.Full do
           {:ok,
            {[Charts.chart_data_t()], [Charts.chart_paths_t()], [Charts.chart_accumulator_t()]}}
   def query(metrics, time_from, time_to, accuracy) do
-    with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
-      rows_by_metrics = group_rows_by_metrics(rows)
+    case create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
+      {:ok, %Postgrex.Result{rows: rows}} ->
+        rows_by_metrics = group_rows_by_metrics(rows)
 
-      metrics
-      |> Enum.map(
-        &prepare_chart(&1, Map.get(rows_by_metrics, &1, []), time_from, time_to, accuracy)
-      )
-      |> unzip3()
-      |> then(&{:ok, &1})
-    else
+        metrics
+        |> Enum.map(
+          &prepare_chart(&1, Map.get(rows_by_metrics, &1, []), time_from, time_to, accuracy)
+        )
+        |> unzip3()
+        |> then(&{:ok, &1})
+
       _ ->
         metrics
         |> Enum.map(fn _metric -> {%{series: [], data: [[]]}, [], []} end)
