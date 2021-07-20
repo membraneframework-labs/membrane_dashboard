@@ -98,8 +98,8 @@ defmodule Membrane.Dashboard.Dagre do
       [nodes, edges, combos] =
         [nodes, edges, combos]
         |> Enum.map(fn
-          %MapSet{} = set -> MapSet.to_list(set)
-          list -> list
+          list when is_list(list) -> list
+          set -> MapSet.to_list(set)
         end)
 
       {:ok, %{nodes: nodes, edges: edges, combos: combos}}

@@ -296,8 +296,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         alive_pipelines =
           Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
             time_to
-            |> DateTime.from_unix(:millisecond)
-            |> elem(1)
+            |> DateTime.from_unix!(:millisecond)
+            |> DateTime.to_naive()
           )
 
         send(live_view_pid, {:alive_pipelines, alive_pipelines})
