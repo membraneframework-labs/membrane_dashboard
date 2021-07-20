@@ -25,7 +25,6 @@ interface RefreshData {
 const ChartsHook = {
   destroyed(this: Hook) {
     // TODO: add removing charts when hooks gets destroyed (happens sometimes but don't know why yet)
-
   },
   mounted(this: Hook) {
     this.charts = [];

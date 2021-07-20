@@ -103,9 +103,6 @@ defmodule Membrane.Dashboard.Dagre do
         end)
 
       {:ok, %{nodes: nodes, edges: edges, combos: combos}}
-    else
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
