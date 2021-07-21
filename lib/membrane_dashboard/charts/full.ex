@@ -22,8 +22,7 @@ defmodule Membrane.Dashboard.Charts.Full do
   of chart accumulators that can be reused by the chart in case of an real-time update (e.g. to cache some necessary information).
   """
   @spec query([String.t()], non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
-          {:ok,
-           {[Charts.chart_data_t()], [Charts.chart_paths_t()], [Charts.chart_accumulator_t()]}}
+          Charts.chart_query_result_t()
   def query(metrics, time_from, time_to, accuracy) do
     case create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
       {:ok, %Postgrex.Result{rows: rows}} ->
@@ -62,7 +61,12 @@ defmodule Membrane.Dashboard.Charts.Full do
       data: [interval | data]
     }
 
-    {chart_data, paths, Enum.zip(paths, accumulators) |> Map.new()}
+    mapped_accumulators =
+      paths
+      |> Enum.zip(accumulators)
+      |> Map.new()
+
+    {chart_data, paths, mapped_accumulators}
   end
 
   defp series_from_paths(paths) do

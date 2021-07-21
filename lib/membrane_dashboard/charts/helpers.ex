@@ -178,11 +178,16 @@ defmodule Membrane.Dashboard.Charts.Helpers do
       |> Enum.reduce({init_sum, init_range, []}, fn {time, value}, {sum_so_far, range, acc} ->
         {to_stay, to_drop} =
           range
-          |> Enum.split_while(fn {old_time, _} ->
+          |> Enum.split_while(fn {old_time, _value} ->
             time - old_time < 1.0
           end)
 
-        sum_so_far = sum_so_far - (Enum.map(to_drop, &elem(&1, 1)) |> Enum.sum()) + value
+        to_subtract =
+          to_drop
+          |> Enum.map(&elem(&1, 1))
+          |> Enum.sum()
+
+        sum_so_far = sum_so_far - to_subtract + value
 
         {sum_so_far, [{time, value} | to_stay], [{time, sum_so_far} | acc]}
       end)

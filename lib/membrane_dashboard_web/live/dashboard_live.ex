@@ -69,11 +69,15 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
     # if we have no data assigned then request the full query
     if socket.assigns.data == empty_lists do
-      push_patch_with_params(socket, %{from: from, to: to}) |> noreply()
+      socket
+      |> push_patch_with_params(%{from: from, to: to})
+      |> noreply()
     else
       with true <- connected?(socket),
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
-        launch_query_task(socket, socket.assigns, from, to, :update) |> noreply()
+        socket
+        |> launch_query_task(socket.assigns, from, to, :update)
+        |> noreply()
       else
         _unmatched ->
           socket
@@ -142,7 +146,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         socket
 
       socket ->
-        socket |> plan_update()
+        plan_update(socket)
     end
     |> noreply()
   end

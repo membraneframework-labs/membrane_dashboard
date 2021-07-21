@@ -9,4 +9,6 @@ defmodule Membrane.Dashboard.Charts do
         }
   @type chart_paths_t :: [String.t()]
   @type chart_accumulator_t :: map()
+  @type chart_query_result_t ::
+          {:ok, {[chart_data_t()], [chart_paths_t()], [chart_accumulator_t()]}} | {:error, any()}
 end
