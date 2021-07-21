@@ -26,21 +26,26 @@ defmodule Membrane.Dashboard.Charts.Update do
   Firstly, queries the database to get all the data from the last 5 seconds. Then applies the following steps for every chart to update the data:
   1. Extract new paths (of pipeline elements) from the result of the query (all paths that appeared for the first time in the last 5 seconds).
   2. Create a list of uPlot Series objects with the `label` attribute (as maps: `%{label: path_name}`). One map for every new path.
-  3. Every path needs to have a value for every timestamp. Thus new series data for the time before update is filled with nils.
-  4. Extract new data (data for all paths for last 5 seconds; as a list of lists) from the database query result.
+  3. Every path needs to have a value for every timestamp thus new data series must be filled with nils until the first measurement timestamp.
+  4. Extract new data (data for all paths for the last 5 seconds; as a list of lists) from the database query result.
   5. Truncate old data - delete its first 5 seconds (to maintain visibility of just last x minutes).
   6. Concatenate truncated old data and new series data - it creates full data for the time before update.
   7. Append new data to every path data.
-  8. Create map (of type `update_data_t`) serializable to ChartData in ChartsHook.
+  8. Create map (of type `update_data_t`) that is serializable to ChartData in ChartsHook.
   """
 
   import Membrane.Dashboard.Charts.Helpers
 
   alias Membrane.Dashboard.Repo
+  alias Membrane.Dashboard.Charts
 
-  @type update_data_t :: %{
-          series: [%{label: String.t()}],
-          data: [[integer()]]
+  @type update_context_t :: %{
+          accuracy: non_neg_integer(),
+          metrics: [String.t()],
+          paths: [String.t()],
+          data: [[integer()]],
+          data_accumulators: [any()],
+          time_to: non_neg_integer()
         }
 
   @doc """
@@ -49,33 +54,48 @@ defmodule Membrane.Dashboard.Charts.Update do
     - full data as 3d list;
     - list of all paths.
   """
-  @spec query(assigns :: map(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, {[update_data_t()], [[[non_neg_integer()]]], [[String.t()]]}}
-  def query(assigns, time_from, time_to) do
-    last_time_to = assigns.time_to
-    update_from = last_time_to + assigns.accuracy
+  @spec query(
+          context :: update_context_t(),
+          time_from :: non_neg_integer(),
+          time_to :: non_neg_integer()
+        ) :: Charts.chart_query_result_t()
+  def query(context, time_from, time_to) do
+    %{
+      metrics: metrics,
+      paths: paths,
+      data: data,
+      data_accumulators: data_accumulators,
+      accuracy: accuracy,
+      time_to: last_time_to
+    } = context
 
-    with {:ok, %Postgrex.Result{rows: rows}} <-
-           create_sql_query(assigns.accuracy, update_from, time_to) |> Repo.query() do
-      rows_by_metrics = group_rows_by_metrics(rows)
+    update_from = last_time_to + accuracy
 
-      updated_data =
+    case create_sql_query(accuracy, update_from, time_to) |> Repo.query() do
+      {:ok, %Postgrex.Result{rows: rows}} ->
+        rows_by_metrics = group_rows_by_metrics(rows)
+
+        params = %{
+          accuracy: accuracy,
+          time_from: time_from,
+          update_from: update_from,
+          last_time_to: last_time_to,
+          time_to: time_to
+        }
+
         query_recursively(
-          assigns.metrics,
+          metrics,
           rows_by_metrics,
-          assigns.paths,
-          assigns.data,
-          assigns.accuracy,
-          time_from,
-          update_from,
-          last_time_to,
-          time_to
+          paths,
+          data,
+          data_accumulators,
+          params
         )
         |> unzip3()
+        |> then(&{:ok, &1})
 
-      {:ok, updated_data}
-    else
-      {:error, _reason} -> {:error, "Cannot fetch update data for charts"}
+      {:error, _reason} ->
+        {:error, "Cannot fetch update data for charts"}
     end
   end
 
@@ -86,11 +106,8 @@ defmodule Membrane.Dashboard.Charts.Update do
          _rows_by_metrics,
          [],
          [],
-         _accuracy,
-         _time_from,
-         _update_from,
-         _last_time_to,
-         _time_to
+         [],
+         _params
        ),
        do: []
 
@@ -99,60 +116,53 @@ defmodule Membrane.Dashboard.Charts.Update do
          rows_by_metrics,
          [metric_paths | paths],
          [metric_data | data],
-         accuracy,
-         time_from,
-         update_from,
-         last_time_to,
-         time_to
+         [metric_accumulator | accumulators],
+         params
        ) do
-    metric_updated_data =
+    [
       one_chart_query(
         metric,
         Map.get(rows_by_metrics, metric, []),
         metric_paths,
         metric_data,
-        accuracy,
-        time_from,
-        update_from,
-        last_time_to,
-        time_to
+        metric_accumulator,
+        params
       )
-
-    updated_data =
-      query_recursively(
-        metrics,
-        rows_by_metrics,
-        paths,
-        data,
-        accuracy,
-        time_from,
-        update_from,
-        last_time_to,
-        time_to
-      )
-
-    [metric_updated_data | updated_data]
+      | query_recursively(
+          metrics,
+          rows_by_metrics,
+          paths,
+          data,
+          accumulators,
+          params
+        )
+    ]
   end
 
-  # prepares data for one chart
   defp one_chart_query(
          metric,
          rows,
          paths,
          old_data,
-         accuracy,
-         time_from,
-         update_from,
-         last_time_to,
-         time_to
+         accumulator,
+         params
        ) do
+    %{
+      accuracy: accuracy,
+      time_from: time_from,
+      update_from: update_from,
+      last_time_to: last_time_to,
+      time_to: time_to
+    } = params
+
     new_paths = get_new_paths(paths, rows)
     all_paths = paths ++ new_paths
 
     {new_series, new_series_data} =
       create_new_series(accuracy, time_from, last_time_to, new_paths)
 
-    new_data = extract_new_data(metric, old_data, accuracy, update_from, time_to, rows, all_paths)
+    {new_data, accumulator} =
+      extract_new_data(metric, accumulator, accuracy, update_from, time_to, rows, all_paths)
 
     [old_timestamps | old_values] = old_data
 
@@ -172,31 +182,26 @@ defmodule Membrane.Dashboard.Charts.Update do
       data: updated_data
     }
 
-    {chart_data, updated_data, all_paths}
+    {chart_data, all_paths, accumulator}
   end
 
   # returns paths from database query result which were not present before update
   defp get_new_paths(old_paths, rows) do
     rows
-    |> Enum.map(fn [_time, path, _size] -> path end)
-    |> Enum.uniq()
-    |> Enum.filter(fn path -> not Enum.member?(old_paths, path) end)
+    |> MapSet.new(fn [_time, path, _size] -> path end)
+    |> MapSet.difference(MapSet.new(old_paths))
+    |> MapSet.to_list()
   end
 
   # returns pair with:
   # - list of uPlot Series with labels (maps: %{label: path_name})
   # - list filled with nils for every new series (so list of lists)
   defp create_new_series(accuracy, time_from, time_to, new_paths) do
-    series =
-      new_paths
-      |> Enum.map(fn path_name -> [{:label, path_name}] end)
-      |> Enum.map(&Enum.into(&1, %{}))
+    nils = for _ <- 1..timeline_interval_size(time_from, time_to, accuracy), do: nil
+    data = for _ <- 1..length(new_paths), do: nils
 
-    all_nils =
-      create_interval(time_from, time_to, accuracy)
-      |> get_all_nils()
+    series = Enum.map(new_paths, &%{label: &1})
 
-    data = Enum.map(new_paths, fn _path -> all_nils end)
     {series, data}
   end
 
@@ -207,43 +212,37 @@ defmodule Membrane.Dashboard.Charts.Update do
   # returns list of lists:
   # - first list contains timestamps
   # - next lists contains paths data
-  defp extract_new_data(metric, old_data, accuracy, time_from, time_to, rows, paths) do
-    interval = create_interval(time_from, time_to, accuracy)
+  defp extract_new_data(metric, accumulator, accuracy, time_from, time_to, rows, paths) do
+    interval = timeline_interval(time_from, time_to, accuracy)
 
-    data_by_paths =
+    {data_by_paths, accumulator} =
       cond do
-        metric in ["caps", "event"] -> to_series(rows, interval, :update, old_data, paths)
-        true -> to_series(rows, interval)
+        metric in ["caps", "event"] ->
+          to_cumulative_series(rows, interval, accumulator)
+
+        metric in ["buffer", "bitrate"] ->
+          to_changes_per_second_series(rows, interval, accumulator)
+
+        true ->
+          to_simple_series(rows, interval)
       end
-      |> Enum.into(%{})
+      |> Enum.unzip()
 
-    all_nils = get_all_nils(interval)
-    data = Enum.map(paths, fn path -> Map.get(data_by_paths, path, all_nils) end)
+    nils = for _ <- 1..length(interval), do: nil
 
-    [interval | data]
+    mapped_data = Map.new(data_by_paths)
+
+    data = Enum.map(paths, &Map.get(mapped_data, &1, nils))
+
+    paths = Map.keys(mapped_data)
+
+    {[interval | data], Enum.zip(paths, accumulator) |> Map.new()}
   end
 
-  # returns list of nils: one `nil` for every timestamp in the `interval`
-  defp get_all_nils(interval),
-    do: for(_ <- 1..length(interval), do: nil)
-
   # appends new data for every series
-  defp append_data([], []),
-    do: []
-
-  defp append_data([one_series_data | rest], [new_one_series_data | new_rest]),
-    do: [one_series_data ++ new_one_series_data | append_data(rest, new_rest)]
-
-  # from [{a1, b1, c1}, {a2, b2, c2}, ...] to {[a1, a2, ...], [b1, b2, ...], [c1, c2, ...]}
-  defp unzip3([]),
-    do: {[], [], []}
-
-  defp unzip3(list),
-    do: :lists.reverse(list) |> unzip3([], [], [])
-
-  defp unzip3([{el1, el2, el3} | reversed_list], list1, list2, list3),
-    do: unzip3(reversed_list, [el1 | list1], [el2 | list2], [el3 | list3])
-
-  defp unzip3([], list1, list2, list3),
-    do: {list1, list2, list3}
+  defp append_data(old_series, new_series) do
+    old_series
+    |> Enum.zip(new_series)
+    |> Enum.map(fn {old, new} -> old ++ new end)
+  end
 end

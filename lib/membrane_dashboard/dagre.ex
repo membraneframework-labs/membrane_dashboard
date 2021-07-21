@@ -79,7 +79,7 @@ defmodule Membrane.Dashboard.Dagre do
       |> Repo.all()
     end
 
-    with {:ok, all_alive_elements} <- alive_element_paths(time_from, time_to),
+    with {:ok, all_alive_elements} <- alive_element_paths(time_to),
          {:ok, dead_elements} <- element_paths_in_time_range(time_from, time_to, true),
          {:ok, new_elements} <- element_paths_in_time_range(time_from, time_to, false),
          existing_elements <- MapSet.difference(all_alive_elements, new_elements),
@@ -88,11 +88,11 @@ defmodule Membrane.Dashboard.Dagre do
          {:ok, dagre} <-
            links
            |> format_rows()
-           |> __MODULE__.G6Marshaller.run(
+           |> __MODULE__.G6Marshaller.run(%{
              dead: dead_elements,
              new: new_elements,
              existing: existing_elements
-           ) do
+           }) do
       %{nodes: nodes, edges: edges, combos: combos} = dagre
 
       [nodes, edges, combos] =
@@ -119,7 +119,7 @@ defmodule Membrane.Dashboard.Dagre do
     end)
   end
 
-  defp alive_element_paths(time_from, time_to) do
+  defp alive_element_paths(time_to) do
     # Some explanation...
     #
     # We need to fetch all elements that either have already existed in given time range or have just been created.
@@ -130,36 +130,40 @@ defmodule Membrane.Dashboard.Dagre do
     # If the data is not corrupted (all termination events have been registered successfully) then for given path we can have
     # 2 entries which one indicates element initialization and the other one element termination. If 2 entries exits then
     # just check if the latter entry happened after `time_to`.
-    result =
-      """
-      SELECT path as total FROM elements
-      GROUP BY path
-      HAVING MIN(time) < '#{parse_time(time_to)}' AND (
-        CASE
-          WHEN COUNT(*) = 2 THEN MAX(time) > '#{parse_time(time_to)}'
-          ELSE true
-         END
-      );
-      """
-      |> Repo.query()
 
-    with {:ok, %Postgrex.Result{rows: elements}} <- result do
-      {:ok, format_element_paths(elements)}
-    else
+    """
+    SELECT path as total FROM elements
+    GROUP BY path
+    HAVING MIN(time) < '#{parse_time(time_to)}' AND (
+      CASE
+        WHEN COUNT(*) = 2 THEN MAX(time) > '#{parse_time(time_to)}'
+        ELSE true
+       END
+    );
+    """
+    |> Repo.query()
+    |> case do
+      {:ok, %Postgrex.Result{rows: elements}} ->
+        {:ok, format_element_paths(elements)}
+
       {:error, reason} ->
         Logger.error(inspect(reason))
         {:error, "Failed to fetch elements"}
     end
   end
 
+  @doc """
+  Queries all paths of all elements that has been initialized in given time range.
+  """
+  @spec element_paths_in_time_range(non_neg_integer(), non_neg_integer(), boolean()) ::
+          {:ok, MapSet.t()} | {:error, any()}
   def element_paths_in_time_range(time_from, time_to, terminated?) do
-    result =
-      "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{parse_time(time_from)}' and '#{parse_time(time_to)}'"
-      |> Repo.query()
+    "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{parse_time(time_from)}' and '#{parse_time(time_to)}'"
+    |> Repo.query()
+    |> case do
+      {:ok, %Postgrex.Result{rows: elements}} ->
+        {:ok, format_element_paths(elements)}
 
-    with {:ok, %Postgrex.Result{rows: elements}} <- result do
-      {:ok, format_element_paths(elements)}
-    else
       {:error, reason} ->
         Logger.error(inspect(reason))
         {:error, "Failed to fetch elements"}

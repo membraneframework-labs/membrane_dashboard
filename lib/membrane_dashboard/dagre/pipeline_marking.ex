@@ -10,7 +10,6 @@ defmodule Membrane.Dashboard.PipelineMarking do
   import Ecto.Query
 
   alias Membrane.Dashboard.Repo
-  alias Membrane.Dashboard.Helpers
 
   @doc """
   Given pipeline prefix tries to mark all elements, that belong to the given pipeline, as dead by creating

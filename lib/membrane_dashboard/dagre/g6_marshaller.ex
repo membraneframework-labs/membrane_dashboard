@@ -62,7 +62,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
 
   @spec run(
           [link_t()],
-          elements_liveliness :: [new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()]
+          elements_liveliness :: %{new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()}
         ) :: {:ok, any()} | {:error, any()}
   def run(links, elements_liveliness) do
     bin_nodes = collect_bin_nodes(links)
@@ -156,7 +156,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
     [label | parents] = path |> Enum.reverse()
 
     parent_id =
-      if length(parents) == 0 do
+      if parents == [] do
         nil
       else
         parents |> Enum.reverse() |> Enum.join() |> hash_string()
@@ -169,7 +169,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
     }
   end
 
-  defp colorize_nodes(nodes, dead: dead, new: new, existing: existing) do
+  defp colorize_nodes(nodes, elements_liveliness) do
     nodes
     |> Enum.map(fn %{path: path, is_bin: is_bin} = node ->
       path =
@@ -181,25 +181,28 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
 
       path_str = Enum.join(path, "/")
 
-      style =
-        cond do
-          MapSet.member?(dead, path_str) ->
-            if is_bin, do: @dead_bin_node_style, else: @dead_node_style
-
-          MapSet.member?(new, path_str) ->
-            if is_bin, do: @new_bin_node_style, else: @new_node_style
-
-          MapSet.member?(existing, path_str) ->
-            if is_bin, do: @existing_bin_node_style, else: @existing_node_style
-
-          true ->
-            Logger.warn("#{path_str} has not been found among queried elements...")
-
-            @default_node_style
-        end
+      style = select_path_style(path_str, is_bin, elements_liveliness)
 
       Map.put(node, :style, style)
     end)
+  end
+
+  defp select_path_style(path, is_bin, %{dead: dead, new: new, existing: existing}) do
+    cond do
+      MapSet.member?(dead, path) ->
+        if is_bin, do: @dead_bin_node_style, else: @dead_node_style
+
+      MapSet.member?(new, path) ->
+        if is_bin, do: @new_bin_node_style, else: @new_node_style
+
+      MapSet.member?(existing, path) ->
+        if is_bin, do: @existing_bin_node_style, else: @existing_node_style
+
+      true ->
+        Logger.warn("#{path} has not been found among queried elements...")
+
+        @default_node_style
+    end
   end
 
   defp format_element(last_parent, @bin_itself, pad, _is_bin),

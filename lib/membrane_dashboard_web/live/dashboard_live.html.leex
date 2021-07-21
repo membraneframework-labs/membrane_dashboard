@@ -26,7 +26,7 @@
     <div class="AccuracyInput">
       <label>Accuracy</label>
       <h6>Be aware that the better accuracy, the longer rendering time.</h6>
-      <input id="accuracy" type="number" min="50" value="<%= @accuracy %>" name="accuracy" phx-debounce="blur"/>
+      <input id="accuracy" type="number" min="10" value="<%= @accuracy %>" name="accuracy" phx-debounce="blur"/>
       <div id="accuracy-unit">ms</div>
     </div>
     <button name="button" type="submit">Apply Accuracy</button>
