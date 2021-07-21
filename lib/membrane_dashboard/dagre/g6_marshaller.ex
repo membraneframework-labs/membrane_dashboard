@@ -62,7 +62,7 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
 
   @spec run(
           [link_t()],
-          elements_liveliness :: [new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()]
+          elements_liveliness :: %{new: MapSet.t(), dead: MapSet.t(), existing: MapSet.t()}
         ) :: {:ok, any()} | {:error, any()}
   def run(links, elements_liveliness) do
     bin_nodes = collect_bin_nodes(links)

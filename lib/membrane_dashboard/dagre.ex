@@ -79,7 +79,7 @@ defmodule Membrane.Dashboard.Dagre do
       |> Repo.all()
     end
 
-    with {:ok, all_alive_elements} <- alive_element_paths(time_from, time_to),
+    with {:ok, all_alive_elements} <- alive_element_paths(time_to),
          {:ok, dead_elements} <- element_paths_in_time_range(time_from, time_to, true),
          {:ok, new_elements} <- element_paths_in_time_range(time_from, time_to, false),
          existing_elements <- MapSet.difference(all_alive_elements, new_elements),
@@ -119,7 +119,7 @@ defmodule Membrane.Dashboard.Dagre do
     end)
   end
 
-  defp alive_element_paths(time_from, time_to) do
+  defp alive_element_paths(time_to) do
     # Some explanation...
     #
     # We need to fetch all elements that either have already existed in given time range or have just been created.
