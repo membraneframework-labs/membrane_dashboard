@@ -36,7 +36,7 @@ defmodule Membrane.Dashboard.Charts.Full do
         |> unzip3()
         |> then(&{:ok, &1})
 
-      _ ->
+      _error ->
         metrics
         |> Enum.map(fn _metric -> {%{series: [], data: [[]]}, [], []} end)
         |> unzip3()

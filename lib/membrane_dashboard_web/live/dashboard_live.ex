@@ -75,7 +75,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
         launch_query_task(socket, socket.assigns, from, to, :update) |> noreply()
       else
-        _ ->
+        _unmatched ->
           socket
           |> plan_update()
           |> noreply()
@@ -194,7 +194,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("last-x-min", %{"value" => minutes}, socket) do
     case Integer.parse(minutes) do
-      {minutes_as_int, ""} ->
+      {minutes_as_int, _rem} ->
         push_patch_with_params(socket, %{
           from: now(-60 * minutes_as_int),
           to: now(),
@@ -202,7 +202,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
           update_range: 60 * minutes_as_int
         })
 
-      _ ->
+      :error ->
         put_flash(socket, :error, ~s(Invalid format of "Last x minutes"))
     end
     |> noreply()
@@ -248,7 +248,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
             alive_pipelines: socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
           )
 
-        _ ->
+        _result ->
           assign(socket, pipeline_marking_active: false)
       end
     else
@@ -353,10 +353,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   # returns information whether the charts should be updated in real time
   defp extract_update_status(%{"update" => update}, _socket) do
-    case update do
-      "true" -> true
-      _ -> false
-    end
+    update == "true"
   end
 
   defp extract_update_status(_params, socket),
@@ -380,7 +377,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         {:error, "\"from\" should be before \"to\""}
       end
     else
-      _ -> {:error, "Invalid time range format"}
+      _invalid_format -> {:error, "Invalid time range format"}
     end
   end
 

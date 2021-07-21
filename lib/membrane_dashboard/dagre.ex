@@ -152,6 +152,11 @@ defmodule Membrane.Dashboard.Dagre do
     end
   end
 
+  @doc """
+  Queries all paths of all elements that has been initialized in given time range.
+  """
+  @spec element_paths_in_time_range(non_neg_integer(), non_neg_integer(), boolean()) ::
+          {:ok, MapSet.t()} | {:error, any()}
   def element_paths_in_time_range(time_from, time_to, terminated?) do
     "SELECT path FROM elements where terminated = #{terminated?} AND time BETWEEN '#{parse_time(time_from)}' and '#{parse_time(time_to)}'"
     |> Repo.query()

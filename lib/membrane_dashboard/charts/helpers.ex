@@ -112,6 +112,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @doc """
   Creates an aggregate series with an increasing values (each value is a sum of all previous and current value).
   """
+  @spec to_cumulative_series(rows_t(), interval_t(), accumulator :: map()) :: series_t()
   def to_cumulative_series(rows, interval, initial_accumulator) do
     rows
     |> rows_to_data_by_paths()
@@ -234,15 +235,16 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     end
   end
 
-  def unzip3([]),
-    do: {[], [], []}
-
+  @doc """
+  Unzips a list consisting of 3 element tuples into 3 separate lists.
+  """
+  @spec unzip3(list()) :: {list(), list(), list()}
   def unzip3(list),
-    do: :lists.reverse(list) |> unzip3([], [], [])
+    do: :lists.reverse(list) |> do_unzip3([], [], [])
 
-  def unzip3([{el1, el2, el3} | reversed_list], list1, list2, list3),
-    do: unzip3(reversed_list, [el1 | list1], [el2 | list2], [el3 | list3])
+  defp do_unzip3([{el1, el2, el3} | reversed_list], list1, list2, list3),
+    do: do_unzip3(reversed_list, [el1 | list1], [el2 | list2], [el3 | list3])
 
-  def unzip3([], list1, list2, list3),
+  defp do_unzip3([], list1, list2, list3),
     do: {list1, list2, list3}
 end
