@@ -6,7 +6,6 @@ defmodule Membrane.Dashboard.Application do
   def start(_type, _args) do
     children = [
       Membrane.Dashboard.Repo,
-      Membrane.DashboardWeb.Telemetry,
       {Phoenix.PubSub, name: Membrane.Dashboard.PubSub},
       Membrane.DashboardWeb.Endpoint
     ]
