@@ -43,7 +43,10 @@
   <h2>Charts</h2>
   <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
 
-  <h2>Pipeline diagrams</h2>
+  <div id="diagrams-heading">
+    <h2>Pipeline diagrams</h2>
+    <button id="dagre-rerender" type="button" phx-update="ignore">The number of pipelines has changed – click to update</button>
+  </div>
   <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
 
   <%= if not is_nil(@top_level_combos) and length(@top_level_combos) > 0 do %>

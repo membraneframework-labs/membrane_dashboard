@@ -137,6 +137,17 @@
   margin-bottom: 2rem;
 }
 
+#diagrams-heading {
+  h2 {
+    display: inline-block;
+  }
+
+  #dagre-rerender {
+    display: none;
+    float: right;
+  }
+}
+
 .Dagre {
   height: 20%;
   width: 100%;
