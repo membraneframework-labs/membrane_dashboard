@@ -1,11 +1,11 @@
-import G6 from "@antv/g6";
+import { Graph, ComboConfig } from "@antv/g6";
 
 export function createDagre(
   container: HTMLElement,
   width: number,
   height: number
-): G6.Graph {
-  return new G6.Graph({
+): Graph {
+  return new Graph({
     container: container.id,
     width,
     height,
@@ -67,4 +67,24 @@ export function createDagre(
       },
     },
   });
+}
+
+export function getTopLevelCombos(
+  combos: ComboConfig[] | undefined
+): ComboConfig[] {
+  return combos?.filter((combo) => !combo.parentId) || [];
+}
+
+export function comboIdChanged(
+  oldCombos: ComboConfig[],
+  newCombos: ComboConfig[]
+): boolean {
+  if (oldCombos.length !== newCombos.length) return true;
+
+  const oldIdSet = new Set(oldCombos.map((combo) => combo.id));
+  for (const combo of newCombos) {
+    if (!oldIdSet.has(combo.id)) return true;
+  }
+
+  return false;
 }
