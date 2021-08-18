@@ -1,7 +1,7 @@
 import { Graph, GraphData } from "@antv/g6";
 
 import { ViewHookInterface } from "phoenix_live_view";
-import { createDagre, defaultLayout, graphInteractionListener, nodeIdsDifferent } from "../utils/dagre";
+import { areNodesDifferent, createDagre, defaultLayout, graphInteractionListener } from "../utils/dagre";
 
 interface DagreData {
   data: GraphData;
@@ -11,7 +11,7 @@ interface FocusComboData {
   id: string;
 }
 
-type Hook = ViewHookInterface & { graph: Graph };
+type Hook = ViewHookInterface & { graph: Graph } & { hasUserInteractedSinceLastRender: boolean };
 
 const DagreHook = {
   mounted(this: Hook) {
@@ -21,7 +21,7 @@ const DagreHook = {
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
 
-    let hasInteracted = false;
+    this.hasUserInteractedSinceLastRender = false;
 
     window.onresize = () => {
       if (!graph || graph.get("destroyed")) return;
@@ -50,12 +50,15 @@ const DagreHook = {
       renderGraph();
     });
 
-    const listenForInteractions = () => {
-      hasInteracted = false;
+    const listenForUserInteractions = () => {
+      this.hasUserInteractedSinceLastRender = false;
+      this.graph.updateLayout(defaultLayout);
+
       const listen = graphInteractionListener(this.graph, () => {
-        hasInteracted = true;
+        this.hasUserInteractedSinceLastRender = true;
         this.graph.destroyLayout();
       });
+
       listen();
     };
 
@@ -74,20 +77,20 @@ const DagreHook = {
         data.combos?.filter((combo) => !combo.parentId) || [];
       this.pushEvent("top-level-combos", topLevelCombos);
 
-      const oldNodes = (this.graph.save() as GraphData).nodes || [];
+      const previousNodes = (this.graph.save() as GraphData).nodes || [];
       const newNodes = data.nodes || [];
 
-      if (oldNodes.length === 0) {
+      if (previousNodes.length === 0) {
         this.graph.data(data);
         renderGraph();
         return;
       }
 
-      const idsChanged = nodeIdsDifferent(oldNodes, newNodes);
+      const nodesDifferent = areNodesDifferent(previousNodes, newNodes);
 
-      if (idsChanged) {
+      if (nodesDifferent) {
         this.graph.data(data);
-        if (hasInteracted) {
+        if (this.hasUserInteractedSinceLastRender) {
           // the user has interacted with the graph, let them render manually later
           dagreRenderBtn?.style.setProperty("display", "block");
         } else {
@@ -105,10 +108,8 @@ const DagreHook = {
 
     const renderGraph = () => {
       this.graph.render();
-      this.graph.updateLayout(defaultLayout);
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
-      this.graph.fitView();
-      listenForInteractions();
+      listenForUserInteractions();
     };
   },
 };

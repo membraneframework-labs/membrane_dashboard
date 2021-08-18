@@ -76,31 +76,23 @@ const graphInteractionEvents = ["click", "dragstart", "touchstart"];
 
 export function graphInteractionListener(
   graph: Graph,
-  handler: () => void
+  onIteraction: () => void
 ): () => void {
   return function() {
     graphInteractionEvents.forEach((event) => graph.on(event, () => {
-      handler();
+      onIteraction();
       graphInteractionEvents.forEach((event) => graph.off(event));
     }));
   };
 }
 
-export function nodeIdsDifferent(
-  nodes1: NodeConfig[],
-  nodes2: NodeConfig[]
+export function areNodesDifferent(
+  previousNodes: NodeConfig[],
+  newNodes: NodeConfig[]
 ): boolean {
-  if (nodes1.length !== nodes2.length) return true;
+  if (previousNodes.length !== newNodes.length) return true;
 
-  const [bigger, smaller] =
-    nodes1.length > nodes2.length
-      ? [nodes1, nodes2]
-      : [nodes2, nodes1];
+  const idSet = new Set(previousNodes.map((node) => node.id));
 
-  const idSet = new Set(bigger.map((node) => node.id));
-  for (const node of smaller) {
-    if (!idSet.has(node.id)) return true;
-  }
-
-  return false;
+  return newNodes.some((node) => !idSet.has(node.id));
 }
