@@ -31,7 +31,9 @@ const DagreHook = {
 
     document.getElementById("dagre-relayout")?.addEventListener("click", () => {
       this.graph.updateLayout(defaultLayout);
-      this.graph.destroyLayout();
+      if (this.hasUserInteractedSinceLastRender) {
+        this.graph.destroyLayout();
+      }
     });
 
     document.getElementById("dagre-export-image")?.addEventListener("click", () => {
