@@ -1,7 +1,7 @@
-import { ComboConfig, Graph, GraphData } from "@antv/g6";
+import { Graph, GraphData } from "@antv/g6";
 
 import { ViewHookInterface } from "phoenix_live_view";
-import { createDagre, getTopLevelCombos, comboIdChanged } from "../utils/dagre";
+import { createDagre, defaultLayout, graphInteractionListener, nodeIdsDifferent } from "../utils/dagre";
 
 interface DagreData {
   data: GraphData;
@@ -17,10 +17,11 @@ const DagreHook = {
   mounted(this: Hook) {
     const width = this.el.scrollWidth - 20;
     const height = this.el.scrollHeight;
-    let canRerenderPipelines = true;
 
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
+
+    let hasInteracted = false;
 
     window.onresize = () => {
       if (!graph || graph.get("destroyed")) return;
@@ -29,7 +30,8 @@ const DagreHook = {
     };
 
     document.getElementById("dagre-relayout")?.addEventListener("click", () => {
-      this.graph.updateLayout({ sortByCombo: true });
+      this.graph.updateLayout(defaultLayout);
+      this.graph.destroyLayout();
     });
 
     document.getElementById("dagre-export-image")?.addEventListener("click", () => {
@@ -42,10 +44,20 @@ const DagreHook = {
       this.graph.zoomTo(oldRatio);
     });
 
-    const dagreRerenderBtn = document.getElementById("dagre-rerender");
-    dagreRerenderBtn?.addEventListener("click", () => {
-      renderPipelines();
+    const dagreRenderBtn = document.getElementById("dagre-render");
+    dagreRenderBtn?.addEventListener("click", () => {
+      dagreRenderBtn?.style.setProperty("display", "");
+      renderGraph();
     });
+
+    const listenForInteractions = () => {
+      hasInteracted = false;
+      const listen = graphInteractionListener(this.graph, () => {
+        hasInteracted = true;
+        this.graph.destroyLayout();
+      });
+      listen();
+    };
 
     const canvas = document.querySelector(
       "#dagre-container > canvas"
@@ -54,32 +66,36 @@ const DagreHook = {
     canvas.onselectstart = function () {
       return false;
     };
-    const canvasClickListener = () => {
-      canRerenderPipelines = false;
-      canvas.removeEventListener("click", canvasClickListener);
-    };
-    canvas.addEventListener("click", canvasClickListener);
 
     this.handleEvent("dagre_data", (payload) => {
       const data = (payload as DagreData).data;
 
-      const oldCombos = this.graph.save().combos as ComboConfig[] || [];
-      const newCombos = data.combos || [];
-
-      const topLevelCombos = getTopLevelCombos(newCombos);
+      const topLevelCombos =
+        data.combos?.filter((combo) => !combo.parentId) || [];
       this.pushEvent("top-level-combos", topLevelCombos);
 
-      this.graph.data(data);
+      const oldNodes = (this.graph.save() as GraphData).nodes || [];
+      const newNodes = data.nodes || [];
 
-      if (canRerenderPipelines || oldCombos.length === 0) {
-        // canvas has not been touched or is empty, just render new pipelines
-        renderPipelines();
-      } else if (comboIdChanged(oldCombos, newCombos)) {
-        // new pipelines, but canvas not empty - display a button to rerender manually
-        dagreRerenderBtn?.style.setProperty("display", "block");
+      if (oldNodes.length === 0) {
+        this.graph.data(data);
+        renderGraph();
+        return;
+      }
+
+      const idsChanged = nodeIdsDifferent(oldNodes, newNodes);
+
+      if (idsChanged) {
+        this.graph.data(data);
+        if (hasInteracted) {
+          // the user has interacted with the graph, let them render manually later
+          dagreRenderBtn?.style.setProperty("display", "block");
+        } else {
+          renderGraph();
+        }
       } else {
-        // no new pipelines, refresh the current state
-        this.graph.refresh();
+        // no new/removed nodes, make diff and update state of the present elements
+        this.graph.changeData(data);
       }
     });
 
@@ -87,12 +103,12 @@ const DagreHook = {
       this.graph.focusItem((payload as FocusComboData).id, true);
     });
 
-    const renderPipelines = () => {
-      dagreRerenderBtn?.style.setProperty("display", "");
+    const renderGraph = () => {
       this.graph.render();
+      this.graph.updateLayout(defaultLayout);
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
-      canRerenderPipelines = true;
-      canvas.addEventListener("click", canvasClickListener);
+      this.graph.fitView();
+      listenForInteractions();
     };
   },
 };
