@@ -15,14 +15,4 @@ defmodule Membrane.DashboardWeb.Router do
 
     live "/", DashboardLive
   end
-
-  # Enables LiveDashboard only for development
-  if Mix.env() in [:dev, :test] do
-    import Phoenix.LiveDashboard.Router
-
-    scope "/" do
-      pipe_through :browser
-      live_dashboard "/dashboard", metrics: Membrane.DashboardWeb.Telemetry
-    end
-  end
 end
