@@ -304,7 +304,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
-  defp launch_query_task(socket, assings, _time_from, _time_to, _mode)
+  defp launch_query_task(socket, _assigns, _time_from, _time_to, _mode)
       when socket.assigns.query_task_ref != nil do
     Logger.warn("Tried to launch a query task when some task was already running")
     socket
