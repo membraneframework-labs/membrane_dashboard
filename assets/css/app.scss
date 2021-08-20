@@ -137,17 +137,6 @@
   margin-bottom: 2rem;
 }
 
-#diagrams-heading {
-  h2 {
-    display: inline-block;
-  }
-
-  #dagre-render {
-    display: none;
-    float: right;
-  }
-}
-
 .Dagre {
   height: 20%;
   width: 100%;
@@ -155,6 +144,15 @@
   border-radius: 16px;
   margin-bottom: 2rem;
   overflow: hidden;
+}
+
+#dagre-controls {
+  display: flex;
+  justify-content: center;
+
+  button {
+    margin: 5px;
+  }
 }
 
 .DagreCombos {

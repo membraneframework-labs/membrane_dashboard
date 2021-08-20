@@ -1,12 +1,4 @@
-import { Graph, NodeConfig } from "@antv/g6";
-
-export const defaultLayout = {
-  type: "dagre",
-  rankdir: "LR",
-  sortByCombo: true,
-  ranksep: 10,
-  nodesep: 10,
-};
+import { Graph } from "@antv/g6";
 
 export function createDagre(
   container: HTMLElement,
@@ -23,7 +15,11 @@ export function createDagre(
     groupByTypes: false,
     enabledStack: false,
     modes: {
-      default: [
+      preview: [
+        "drag-canvas",
+        "zoom-canvas",
+      ],
+      snapshot: [
         "drag-combo",
         "drag-node",
         "drag-canvas",
@@ -34,7 +30,13 @@ export function createDagre(
         },
       ],
     },
-    layout: defaultLayout,
+    layout: {
+      type: "dagre",
+      rankdir: "LR",
+      sortByCombo: true,
+      ranksep: 10,
+      nodesep: 10,
+    },
     defaultNode: {
       size: [400, 50],
       type: "rect",
@@ -70,29 +72,4 @@ export function createDagre(
       },
     },
   });
-}
-
-const graphInteractionEvents = ["click", "dragstart", "touchstart"];
-
-export function graphInteractionListener(
-  graph: Graph,
-  onIteraction: () => void
-): () => void {
-  return function() {
-    graphInteractionEvents.forEach((event) => graph.on(event, () => {
-      onIteraction();
-      graphInteractionEvents.forEach((event) => graph.off(event));
-    }));
-  };
-}
-
-export function areNodesDifferent(
-  previousNodes: NodeConfig[],
-  newNodes: NodeConfig[]
-): boolean {
-  if (previousNodes.length !== newNodes.length) return true;
-
-  const idSet = new Set(previousNodes.map((node) => node.id));
-
-  return newNodes.some((node) => !idSet.has(node.id));
 }
