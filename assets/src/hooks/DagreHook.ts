@@ -11,7 +11,7 @@ interface FocusComboData {
   id: string;
 }
 
-type Hook = ViewHookInterface & { graph: Graph } & { isInPreviewMode: () => boolean };
+type Hook = ViewHookInterface & { graph: Graph, isInPreviewMode: () => boolean };
 
 const DagreHook = {
   mounted(this: Hook) {
@@ -30,23 +30,13 @@ const DagreHook = {
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
     };
 
-    document.getElementById("dagre-relayout")?.addEventListener("click", () => {
-      this.graph.layout();
-    });
-
-    document.getElementById("dagre-export-image")?.addEventListener("click", () => {
-      const oldRatio = this.graph.getZoom();
-      // this zoom is needed to make sure downloaded image is sharp
-      this.graph.zoomTo(1.0);
-      this.graph.downloadFullImage("pipelines-graph", "image/png", {
-        padding: [30, 15, 15, 15],
-      });
-      this.graph.zoomTo(oldRatio);
-    });
-
-    document.getElementById("dagre-fit-view")?.addEventListener("click", () => {
-      this.graph.fitView();
-    });
+    const canvas = document.querySelector(
+      "#dagre-container > canvas"
+    )! as HTMLCanvasElement;
+    // disable double click from selecting text outside of canvas
+    canvas.onselectstart = function () {
+      return false;
+    };
 
     const dagreModeBtn = document.getElementById("dagre-mode");
     dagreModeBtn?.addEventListener("click", () => {
@@ -59,18 +49,32 @@ const DagreHook = {
       dagreModeBtn.innerText = `Switch to ${previousMode} mode`;
     });
 
+    document.getElementById("dagre-fit-view")?.addEventListener("click", () => {
+      this.graph.fitView();
+    });
+
+    document.getElementById("dagre-relayout")?.addEventListener("click", () => {
+      this.graph.layout();
+    });
+
+    document.getElementById("dagre-clear")?.addEventListener("click", () => {
+      this.graph.clear();
+    });
+
+    document.getElementById("dagre-export-image")?.addEventListener("click", () => {
+      const oldRatio = this.graph.getZoom();
+      // this zoom is needed to make sure downloaded image is sharp
+      this.graph.zoomTo(1.0);
+      this.graph.downloadFullImage("pipelines-graph", "image/png", {
+        padding: [30, 15, 15, 15],
+      });
+      this.graph.zoomTo(oldRatio);
+    });
+
     this.graph.on("afterrender", () => {
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
       this.graph.fitView();
     });
-
-    const canvas = document.querySelector(
-      "#dagre-container > canvas"
-    )! as HTMLCanvasElement;
-    // disable double click from selecting text outside of canvas
-    canvas.onselectstart = function () {
-      return false;
-    };
 
     this.handleEvent("dagre_data", (payload) => {
       const data = (payload as DagreData).data;
