@@ -11,7 +11,10 @@ interface FocusComboData {
   id: string;
 }
 
-type Hook = ViewHookInterface & { graph: Graph, isInPreviewMode: () => boolean };
+type Hook = ViewHookInterface & {
+  graph: Graph;
+  isInPreviewMode: () => boolean;
+};
 
 const DagreHook = {
   mounted(this: Hook) {
