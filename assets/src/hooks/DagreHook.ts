@@ -40,13 +40,12 @@ const DagreHook = {
 
     const dagreModeBtn = document.getElementById("dagre-mode");
     dagreModeBtn?.addEventListener("click", () => {
-      const modes = ["preview", "snapshot"];
-      const [previousMode, newMode] = this.isInPreviewMode()
-        ? modes
-        : modes.reverse();
+      const [newMode, innerText] = this.isInPreviewMode()
+        ? ["snapshot", "Exit snapshot mode"]
+        : ["preview", "Snapshot mode"];
 
       this.graph.setMode(newMode);
-      dagreModeBtn.innerText = `Switch to ${previousMode} mode`;
+      dagreModeBtn.innerText = innerText;
     });
 
     document.getElementById("dagre-fit-view")?.addEventListener("click", () => {
@@ -69,6 +68,15 @@ const DagreHook = {
         padding: [30, 15, 15, 15],
       });
       this.graph.zoomTo(oldRatio);
+    });
+
+    this.graph.on("beforemodechange", ({ mode }) => {
+      if (mode === "preview") {
+        this.graph.getCombos().forEach((combo) => {
+          this.graph.expandCombo(combo);
+        });
+        this.graph.refreshPositions();
+      }
     });
 
     this.graph.on("afterrender", () => {
