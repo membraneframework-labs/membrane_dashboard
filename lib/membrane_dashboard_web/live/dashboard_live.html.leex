@@ -46,6 +46,16 @@
   <h2>Pipeline diagrams</h2>
   <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore"></div>
 
+  <div id="dagre-controls">
+    <button id="dagre-mode" type="button" phx-update="ignore">Snapshot mode</button>
+    <button id="dagre-fit-view" type="button" phx-update="ignore">Fit view</button>
+    <button id="dagre-relayout">Relayout</button>
+    <button id="dagre-clear">Clear</button>
+    <button id="dagre-export-image">Export image</button>
+  </div>
+  <br/>
+  <p>In snapshot mode updates are suspended, so your interactions won't be interrupted.</p>
+
   <%= if not is_nil(@top_level_combos) and length(@top_level_combos) > 0 do %>
     <h3>Pipelines</h3>
     <div id="top-level-combos" class="DagreCombos">
@@ -71,10 +81,4 @@
       </div>
     </div>
   <% end %>
-
-
-  <div id="dagre-controls">
-    <button id="dagre-relayout">Relayout dagre</button>
-    <button id="dagre-export-image">Export image</button>
-  </div>
 </div>

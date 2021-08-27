@@ -1,11 +1,11 @@
-import G6 from "@antv/g6";
+import { Graph } from "@antv/g6";
 
 export function createDagre(
   container: HTMLElement,
   width: number,
   height: number
-): G6.Graph {
-  return new G6.Graph({
+): Graph {
+  return new Graph({
     container: container.id,
     width,
     height,
@@ -13,8 +13,13 @@ export function createDagre(
     fitViewPadding: 30,
     animate: true,
     groupByTypes: false,
+    enabledStack: false,
     modes: {
-      default: [
+      preview: [
+        "drag-canvas",
+        "zoom-canvas",
+      ],
+      snapshot: [
         "drag-combo",
         "drag-node",
         "drag-canvas",

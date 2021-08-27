@@ -146,6 +146,15 @@
   overflow: hidden;
 }
 
+#dagre-controls {
+  display: flex;
+  justify-content: center;
+
+  button {
+    margin: 5px;
+  }
+}
+
 .DagreCombos {
   display: flex;
   flex-direction: row;

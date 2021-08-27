@@ -11,7 +11,10 @@ interface FocusComboData {
   id: string;
 }
 
-type Hook = ViewHookInterface & { graph: Graph };
+type Hook = ViewHookInterface & {
+  graph: Graph;
+  isInPreviewMode: () => boolean;
+};
 
 const DagreHook = {
   mounted(this: Hook) {
@@ -21,14 +24,43 @@ const DagreHook = {
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
 
+    this.isInPreviewMode = () => this.graph.getCurrentMode() === "preview";
+    this.graph.setMode("preview");
+
     window.onresize = () => {
       if (!graph || graph.get("destroyed")) return;
       if (!this.el || !this.el.scrollWidth || !this.el.scrollHeight) return;
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
     };
 
+    const canvas = document.querySelector(
+      "#dagre-container > canvas"
+    )! as HTMLCanvasElement;
+    // disable double click from selecting text outside of canvas
+    canvas.onselectstart = function () {
+      return false;
+    };
+
+    const dagreModeBtn = document.getElementById("dagre-mode");
+    dagreModeBtn?.addEventListener("click", () => {
+      const [newMode, innerText] = this.isInPreviewMode()
+        ? ["snapshot", "Exit snapshot mode"]
+        : ["preview", "Snapshot mode"];
+
+      this.graph.setMode(newMode);
+      dagreModeBtn.innerText = innerText;
+    });
+
+    document.getElementById("dagre-fit-view")?.addEventListener("click", () => {
+      this.graph.fitView();
+    });
+
     document.getElementById("dagre-relayout")?.addEventListener("click", () => {
-      this.graph.updateLayout({ sortByCombo: true });
+      this.graph.layout();
+    });
+
+    document.getElementById("dagre-clear")?.addEventListener("click", () => {
+      this.graph.clear();
     });
 
     document.getElementById("dagre-export-image")?.addEventListener("click", () => {
@@ -41,13 +73,19 @@ const DagreHook = {
       this.graph.zoomTo(oldRatio);
     });
 
-    const canvas = document.querySelector(
-      "#dagre-container > canvas"
-    )! as HTMLCanvasElement;
-    // disable double click from selecting text outside of canvas
-    canvas.onselectstart = function () {
-      return false;
-    };
+    this.graph.on("beforemodechange", ({ mode }) => {
+      if (mode === "preview") {
+        this.graph.getCombos().forEach((combo) => {
+          this.graph.expandCombo(combo);
+        });
+        this.graph.refreshPositions();
+      }
+    });
+
+    this.graph.on("afterrender", () => {
+      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
+      this.graph.fitView();
+    });
 
     this.handleEvent("dagre_data", (payload) => {
       const data = (payload as DagreData).data;
@@ -56,11 +94,13 @@ const DagreHook = {
         data.combos?.filter((combo) => !combo.parentId) || [];
       this.pushEvent("top-level-combos", topLevelCombos);
 
-      this.graph.data(data);
-
-      this.graph.render();
-
-      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
+      if (this.graph.getNodes().length === 0) {
+        this.graph.read(data);
+      } else if (this.isInPreviewMode()) {
+        this.graph.changeData(data);
+      } else {
+        this.graph.data(data);
+      }
     });
 
     this.handleEvent("focus_combo", (payload) => {
