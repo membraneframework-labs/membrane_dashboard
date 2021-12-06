@@ -65,7 +65,9 @@
     <h3>Pipelines</h3>
     <div id="top-level-combos" class="DagreCombos">
       <%= for combo <- @top_level_combos do %>
-        <div data-combo-id={combo["id"]} class="Combo" phx-click={"focus-combo:#{combo["id"]}#{combo["label"]}"}></div>
+        <div data-combo-id={combo["id"]} class="Combo" phx-click={"focus-combo:#{combo["id"]}#{combo["label"]}"}>
+          <%= combo["label"] %>
+        </div>
       <% end %>
     </div>
   <% end %>

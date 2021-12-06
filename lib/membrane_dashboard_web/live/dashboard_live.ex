@@ -7,6 +7,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.Dashboard.{Dagre, Helpers}
   alias Membrane.Dashboard.Charts.Full, as: ChartsFull
   alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
+  alias Membrane.Dashboard.DataManager
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
 
   require Logger
@@ -44,6 +45,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         metrics: @metrics,
         paths: empty_lists,
         data: empty_lists,
+        data_manager: nil,
 
         # real-time update timer
         update_ref: nil,
@@ -76,7 +78,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       with true <- connected?(socket),
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
         socket
-        |> launch_query_task(socket.assigns, from, to, :update)
+        |> schedule_query(from, to, mode: :update)
         |> noreply()
       else
         _unmatched ->
@@ -95,12 +97,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket) do
       socket
-      |> launch_query_task(
-        %{metrics: socket.assigns.metrics, accuracy: accuracy},
-        from,
-        to,
-        :full
-      )
+      |> schedule_query(from, to, mode: :full, accuracy: accuracy, metrics: @metrics)
       |> assign(
         accuracy: accuracy,
         update: update,
@@ -122,17 +119,43 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_info({event, charts, paths, accumulators}, socket)
-      when event in [:charts_data, :charts_update] do
+  def handle_info({:data_query, :charts, {charts, _paths}}, socket) do
     socket
-    |> push_event(Atom.to_string(event), %{data: charts})
-    |> assign(data: Enum.map(charts, & &1.data), paths: paths, data_accumulators: accumulators)
+    |> push_event("charts_data", %{data: charts})
     |> noreply()
   end
 
-  def handle_info({:alive_pipelines, alive_pipelines}, socket) do
+  def handle_info({:data_query, :alive_pipelines, alive_pipelines}, socket) do
     socket
     |> assign(alive_pipelines: alive_pipelines)
+    |> noreply()
+  end
+
+  def handle_info({:data_query, :query_start}, socket) do
+    socket
+    |> assign(data_loading: true)
+    |> noreply()
+  end
+
+  def handle_info({:data_query, :query_end, {time_from, time_to}}, socket) do
+    socket
+    |> assign(data_loading: false, time_from: time_from, time_to: time_to)
+    |> plan_update()
+    |> noreply()
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, pid, _reason},
+        %{assigns: %{data_manager: {ref, pid}}} = socket
+      ) do
+    Logger.error("Data manager is down, restarting...")
+
+    {:ok, data_manager} = DataManager.start()
+    ref = Process.monitor(data_manager)
+
+    socket
+    |> assign(data_manager: {ref, data_manager}, data_loading: false)
+    |> put_flash(:error, "Extracting data has failed...")
     |> noreply()
   end
 
@@ -151,7 +174,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_info({:dagre_data, data}, socket) do
+  def handle_info({:data_query, :dagre, data}, socket) do
     socket
     |> push_event("dagre_data", %{data: data})
     |> noreply()
@@ -170,15 +193,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       from: now(-socket.assigns.update_range),
       to: now()
     })
-    |> noreply()
-  end
-
-  def handle_info(
-        {:DOWN, query_task_ref, :process, _pid, _reason},
-        %{assigns: %{query_task_ref: query_task_ref}} = socket
-      ) do
-    socket
-    |> assign(query_task_ref: nil)
     |> noreply()
   end
 
@@ -213,12 +227,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   def handle_event("toggle-update-mode", _value, socket) do
-    if socket.assigns.update do
-      cancel_update(socket)
-    else
-      plan_update(socket)
-    end
+    was_update = socket.assigns.update
+
+    socket
     |> assign(update: !socket.assigns.update)
+    |> then(if was_update, do: &cancel_update/1, else: &plan_update/1)
     |> noreply()
   end
 
@@ -284,8 +297,28 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> DateTime.to_unix(:millisecond)
   end
 
+  defp start_data_manager(socket) when is_nil(socket.assigns.data_manager) do
+    {:ok, data_manager} = DataManager.start()
+    ref = Process.monitor(data_manager)
+
+    assign(socket, data_manager: {ref, data_manager})
+  end
+
+  defp start_data_manager(socket), do: socket
+
+  defp schedule_query(socket, time_from, time_to, options) do
+    socket = start_data_manager(socket)
+
+    {_ref, manager} = socket.assigns.data_manager
+
+    options = Keyword.merge(options, time_from: time_from, time_to: time_to)
+    DataManager.query(manager, options)
+
+    socket
+  end
+
   # next update will be in `@update_time` seconds
-  defp plan_update(socket) do
+  defp plan_update(socket) when socket.assigns.update do
     unless is_nil(socket.assigns.update_ref) do
       Process.cancel_timer(socket.assigns.update_ref)
     end
@@ -294,57 +327,14 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     assign(socket, update_ref: ref)
   end
 
+  defp plan_update(socket), do: socket
+
   defp cancel_update(socket) do
-    if is_nil(socket.assigns.update_ref) do
-      socket
-    else
+    unless is_nil(socket.assigns.update_ref) do
       Process.cancel_timer(socket.assigns.update_ref)
-
-      assign(socket, update_ref: nil)
     end
-  end
 
-  defp launch_query_task(socket, _assigns, _time_from, _time_to, _mode)
-       when socket.assigns.query_task_ref != nil do
-    Logger.warn("Tried to launch a query task when some task was already running")
-    socket
-  end
-
-  defp launch_query_task(socket, assigns, time_from, time_to, mode) do
-    live_view_pid = self()
-
-    task_ref =
-      spawn(fn ->
-        send(live_view_pid, {:set_data_loading, true})
-        {:ok, dagre} = Dagre.query(time_from, time_to)
-        send(live_view_pid, {:dagre_data, dagre})
-
-        if mode == :update do
-          {:ok, {charts, paths, accumulators}} = ChartsUpdate.query(assigns, time_from, time_to)
-
-          send(live_view_pid, {:charts_update, charts, paths, accumulators})
-        else
-          {:ok, {charts, paths, accumulators}} =
-            ChartsFull.query(assigns.metrics, time_from, time_to, assigns.accuracy)
-
-          send(live_view_pid, {:charts_data, charts, paths, accumulators})
-        end
-
-        alive_pipelines =
-          Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
-            time_to
-            |> DateTime.from_unix!(:millisecond)
-            |> DateTime.to_naive()
-          )
-
-        send(live_view_pid, {:alive_pipelines, alive_pipelines})
-
-        send(live_view_pid, {:update_query_time, time_from, time_to})
-        send(live_view_pid, {:set_data_loading, false})
-      end)
-      |> Process.monitor()
-
-    assign(socket, query_task_ref: task_ref)
+    assign(socket, update_ref: nil)
   end
 
   # returns pair of UNIX time values made from strings in params or extracted from assigns in socket
