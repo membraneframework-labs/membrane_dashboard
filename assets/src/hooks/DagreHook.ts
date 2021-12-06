@@ -16,6 +16,20 @@ type Hook = ViewHookInterface & {
   isInPreviewMode: () => boolean;
 };
 
+function reformatNodeNames(data: GraphData) {
+  const nodes = (data.nodes ?? []).map(node => {
+    const label: string = node.label as string || "";
+
+    const newLabel = label.split("\n")
+      .map(part => part.length < 60 ? part : part.slice(0, 60) + "...")
+      .join("\n");
+
+    return { ...node, label: newLabel };
+  });
+
+  return { ...data, nodes };
+}
+
 const DagreHook = {
   mounted(this: Hook) {
     const width = this.el.scrollWidth - 20;
@@ -88,7 +102,7 @@ const DagreHook = {
     });
 
     this.handleEvent("dagre_data", (payload) => {
-      const data = (payload as DagreData).data;
+      const data = reformatNodeNames((payload as DagreData).data);
 
       const topLevelCombos =
         data.combos?.filter((combo) => !combo.parentId) || [];
