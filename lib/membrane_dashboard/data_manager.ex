@@ -4,10 +4,10 @@ defmodule Membrane.Dashboard.DataManager do
 
   use GenServer
 
+  alias Membrane.Dashboard.Charts.Context
   alias Membrane.Dashboard.Charts.Full, as: ChartsFull
   alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
   alias Membrane.Dashboard.Dagre
-  alias Membrane.Dashboard.Charts.Context
 
   @spec start_link() :: GenServer.on_start()
   def start_link() do
@@ -73,7 +73,8 @@ defmodule Membrane.Dashboard.DataManager do
 
     context = %Context{context | data: charts, paths: paths, accumulators: accumulators}
 
-    send_data(respond_to, :charts, {charts, paths})
+    elements_tree = group_paths(paths)
+    send_data(respond_to, :charts, {mode, charts, elements_tree})
 
     alive_pipelines =
       Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
@@ -105,5 +106,30 @@ defmodule Membrane.Dashboard.DataManager do
 
   defp send_data(respond_to, type, data) do
     send(respond_to, {:data_query, type, data})
+  end
+
+  def group_paths(paths) do
+    paths
+    |> List.flatten()
+    |> MapSet.new()
+    |> MapSet.to_list()
+    |> Enum.map(&(String.split(&1, "/") |> Enum.reverse() |> tl() |> Enum.reverse()))
+    |> do_group()
+  end
+
+  defp do_group([]), do: %{}
+
+  defp do_group(list) when is_list(list) do
+    list
+    |> Enum.group_by(&hd/1, &tl/1)
+    |> Enum.map(fn {key, value} ->
+      value =
+        value
+        |> Enum.reject(&(&1 == []))
+        |> do_group()
+
+      {key, value}
+    end)
+    |> Map.new()
   end
 end

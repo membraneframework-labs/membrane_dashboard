@@ -15,10 +15,7 @@ export function createDagre(
     groupByTypes: false,
     enabledStack: false,
     modes: {
-      preview: [
-        "drag-canvas",
-        "zoom-canvas",
-      ],
+      preview: ["drag-canvas", "zoom-canvas"],
       snapshot: [
         "drag-combo",
         "drag-node",

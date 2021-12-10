@@ -4,11 +4,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   """
   use Membrane.DashboardWeb, :live_view
 
-  alias Membrane.Dashboard.{Dagre, Helpers}
-  alias Membrane.Dashboard.Charts.Full, as: ChartsFull
-  alias Membrane.Dashboard.Charts.Update, as: ChartsUpdate
-  alias Membrane.Dashboard.DataManager
+  alias Membrane.Dashboard.{DataManager, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
+  alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
   require Logger
 
@@ -55,6 +53,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         query_task_ref: nil,
 
         # UI related
+        elements_tree: %{},
+        elements_select_state: %ElementsSelect.State{},
         data_loading: false,
         pipeline_marking_active: false,
         top_level_combos: nil,
@@ -115,21 +115,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_info({:charts_init, data}, socket) do
     socket
-    |> push_event("charts_init", %{data: data})
+    |> push_event("charts:init", %{data: data})
     |> noreply()
   end
 
-  def handle_info({:data_query, :charts, {charts, _paths}}, socket) do
-    socket
-    |> push_event("charts_data", %{data: charts})
-    |> noreply()
-  end
-
-  def handle_info({:data_query, :alive_pipelines, alive_pipelines}, socket) do
-    socket
-    |> assign(alive_pipelines: alive_pipelines)
-    |> noreply()
-  end
+  ##################
+  ### DATA QUERY ###
+  ##################
 
   def handle_info({:data_query, :query_start}, socket) do
     socket
@@ -143,6 +135,69 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> plan_update()
     |> noreply()
   end
+
+  def handle_info({:data_query, :charts, {mode, charts, elements_tree}}, socket) do
+    new_elements_select_state =
+      Map.replace!(
+        socket.assigns.elements_select_state,
+        :current_select_values,
+        Map.keys(elements_tree)
+      )
+
+    type =
+      case mode do
+        :full -> "data"
+        :update -> "update"
+      end
+
+    socket
+    |> push_event("charts:" <> type, %{data: charts})
+    |> assign(elements_tree: elements_tree, elements_select_state: new_elements_select_state)
+    |> noreply()
+  end
+
+  def handle_info({:data_query, :dagre, data}, socket) do
+    socket
+    |> push_event("dagre:data", %{data: data})
+    |> noreply()
+  end
+
+  def handle_info({:data_query, :alive_pipelines, alive_pipelines}, socket) do
+    socket
+    |> assign(alive_pipelines: alive_pipelines)
+    |> noreply()
+  end
+
+  #######################
+  ### ELEMENTS SELECT ###
+  #######################
+
+  def handle_info({:elements_select, :reset}, socket) do
+    new_elements_select_state = %ElementsSelect.State{
+      current_select_values: Map.keys(socket.assigns.elements_tree)
+    }
+
+    socket
+    |> assign(elements_select_state: new_elements_select_state)
+    |> push_charts_search_prefix()
+    |> noreply()
+  end
+
+  def handle_info({:elements_select, :apply_filter}, socket) do
+    socket
+    |> push_charts_search_prefix()
+    |> noreply()
+  end
+
+  def handle_info({:elements_select, %ElementsSelect.State{} = elements_select_state}, socket) do
+    socket
+    |> assign(elements_select_state: elements_select_state)
+    |> noreply()
+  end
+
+  ######################
+  ### OTHER MESSAGES ###
+  ######################
 
   def handle_info(
         {:DOWN, ref, :process, pid, _reason},
@@ -174,12 +229,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_info({:data_query, :dagre, data}, socket) do
-    socket
-    |> push_event("dagre_data", %{data: data})
-    |> noreply()
-  end
-
   def handle_info({:set_data_loading, loading}, socket) do
     socket
     |> assign(data_loading: loading)
@@ -196,67 +245,41 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  @impl true
-  def handle_event("refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
-    case parse_time_range(time_from, time_to) do
-      {:ok, {from, to}} ->
-        socket
-        |> push_patch_with_params(%{from: from, to: to, update: false})
-        |> cancel_update()
+  #############################
+  ### DAGRE FRONTEND EVENTS ###
+  #############################
 
-      {:error, reason} ->
-        put_flash(socket, :error, reason)
-    end
-    |> noreply()
+  def handle_event("dagre:top-level-combos", combos, socket),
+    do: socket |> assign(top_level_combos: combos) |> noreply()
+
+  def handle_event("dagre:focus:path", %{"path" => path}, socket) do
+    state = %ElementsSelect.State{
+      active_elements: path,
+      current_select_values: get_in(socket.assigns.elements_tree, path) || []
+    }
+
+    socket = assign(socket, elements_select_state: state)
+
+    handle_info({:elements_select, :apply_filter}, socket)
   end
 
-  def handle_event("last-x-min", %{"value" => minutes}, socket) do
-    case Integer.parse(minutes) do
-      {minutes_as_int, _rem} ->
-        push_patch_with_params(socket, %{
-          from: now(-60 * minutes_as_int),
-          to: now(),
-          update: true,
-          update_range: 60 * minutes_as_int
-        })
-
-      :error ->
-        put_flash(socket, :error, ~s(Invalid format of "Last x minutes"))
-    end
-    |> noreply()
-  end
-
-  def handle_event("toggle-update-mode", _value, socket) do
-    was_update = socket.assigns.update
-
+  def handle_event("dagre:focus:combo:" <> combo_id, _value, socket) do
     socket
-    |> assign(update: !socket.assigns.update)
-    |> then(if was_update, do: &cancel_update/1, else: &plan_update/1)
+    |> push_event("focus_combo", %{id: combo_id})
     |> noreply()
   end
 
-  def handle_event("toggle-pipeline-marking", _value, socket) do
+  #################################
+  ### PIPELINES FRONTEND EVENTS ###
+  #################################
+
+  def handle_event("pipelines:toggle-marking", _value, socket) do
     socket
     |> assign(pipeline_marking_active: !socket.assigns.pipeline_marking_active)
     |> noreply()
   end
 
-  def handle_event("apply-accuracy", %{"accuracy" => accuracy}, socket) do
-    {accuracy, ""} = Integer.parse(accuracy)
-
-    socket
-    |> push_patch_with_params(%{
-      accuracy: accuracy,
-      from: socket.assigns.time_from,
-      to: socket.assigns.time_to
-    })
-    |> noreply()
-  end
-
-  def handle_event("top-level-combos", combos, socket),
-    do: socket |> assign(top_level_combos: combos) |> noreply()
-
-  def handle_event("select-alive-pipeline:" <> pipeline, _value, socket) do
+  def handle_event("pipelines:focus:" <> pipeline, _value, socket) do
     if socket.assigns.pipeline_marking_active do
       case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
         {inserted, nil} when inserted > 0 ->
@@ -274,10 +297,65 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_event("focus-combo:" <> combo_id, _value, socket) do
-    socket
-    |> push_event("focus_combo", %{id: combo_id})
+  #################################
+  ### SEARCH FRONTEND EVENTS ###
+  #################################
+
+  @impl true
+  def handle_event("search:refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
+    case parse_time_range(time_from, time_to) do
+      {:ok, {from, to}} ->
+        socket
+        |> push_patch_with_params(%{from: from, to: to, update: false})
+        |> cancel_update()
+
+      {:error, reason} ->
+        put_flash(socket, :error, reason)
+    end
     |> noreply()
+  end
+
+  def handle_event("search:last-x-min", %{"value" => minutes}, socket) do
+    case Integer.parse(minutes) do
+      {minutes_as_int, _rem} ->
+        push_patch_with_params(socket, %{
+          from: now(-60 * minutes_as_int),
+          to: now(),
+          update: true,
+          update_range: 60 * minutes_as_int
+        })
+
+      :error ->
+        put_flash(socket, :error, ~s(Invalid format of "Last x minutes"))
+    end
+    |> noreply()
+  end
+
+  def handle_event("search:toggle-update-mode", _value, socket) do
+    was_update = socket.assigns.update
+
+    socket
+    |> assign(update: !socket.assigns.update)
+    |> then(if was_update, do: &cancel_update/1, else: &plan_update/1)
+    |> noreply()
+  end
+
+  def handle_event("search:apply-accuracy", %{"accuracy" => accuracy}, socket) do
+    {accuracy, ""} = Integer.parse(accuracy)
+
+    socket
+    |> push_patch_with_params(%{
+      accuracy: accuracy,
+      from: socket.assigns.time_from,
+      to: socket.assigns.time_to
+    })
+    |> noreply()
+  end
+
+  defp push_charts_search_prefix(socket) do
+    series_prefix = Enum.join(socket.assigns.elements_select_state.active_elements, "/")
+
+    push_event(socket, "charts:filter", %{seriesPrefix: series_prefix})
   end
 
   @doc """

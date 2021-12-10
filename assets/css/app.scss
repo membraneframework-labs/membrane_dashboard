@@ -3,6 +3,11 @@
 @import "./progress-bar.scss";
 @import "./uplot.scss";
 
+@mixin pretty_border {
+  border: 1px solid #ccc;
+  border-radius: 16px;
+}
+
 /* LiveView specific classes for your customizations */
 .phx-no-feedback.invalid-feedback,
 .phx-no-feedback .invalid-feedback {
@@ -109,7 +114,7 @@
 #date-inputs {
   display: flex;
   align-items: end;
-  
+
   div {
     margin-right: 10px;
   }
@@ -144,17 +149,15 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  @include pretty_border;
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 16px;
   margin-bottom: 2rem;
 }
 
 .Dagre {
   height: 20%;
   width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 16px;
+  @include pretty_border;
   margin-bottom: 2rem;
   overflow: hidden;
 }
@@ -168,19 +171,22 @@
   }
 }
 
+.ActiveDottedBorder {
+  border: 2px dotted #db4040;
+  border-radius: 16px;
+}
+
 .DagreCombos {
   display: flex;
   flex-direction: row;
-  border: 1px solid #ccc;
-  border-radius: 16px;
+  @include pretty_border;
   padding: 5px;
   margin-bottom: 10px;
   min-height: 50px;
 
   .Combo {
     padding: 10px 10px;
-    border-radius: 16px;
-    border: 1px solid #ccc;
+    @include pretty_border;
     margin: 0 10px;
     cursor: pointer;
     &:hover {
@@ -195,11 +201,37 @@
   justify-content: center;
   align-items: center;
   font-weight: 500;
-  border: 1px white solid;
-  border-radius: 10px;
+  @include pretty_border;
   padding: 10px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+}
+
+.ElementsSelect {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+
+  form {
+    margin-bottom: 0;
+  }
+
+  select {
+    max-width: 400px;
+  }
+
+  .activeElements {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+
+    div {
+      @include pretty_border;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: fit-content;
+    }
+  }
 }
 
 .PipelineMarkingActive {

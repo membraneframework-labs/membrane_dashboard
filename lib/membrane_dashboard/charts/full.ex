@@ -24,10 +24,7 @@ defmodule Membrane.Dashboard.Charts.Full do
   """
   @spec query(Context.t()) ::
           Charts.chart_query_result_t()
-  def query(
-        %Context{time_from: time_from, time_to: time_to, accuracy: accuracy, metrics: metrics} =
-          context
-      ) do
+  def query(%Context{time_from: time_from, time_to: time_to, accuracy: accuracy, metrics: metrics}) do
     case create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
       {:ok, %Postgrex.Result{rows: rows}} ->
         rows_by_metrics = group_rows_by_metrics(rows)

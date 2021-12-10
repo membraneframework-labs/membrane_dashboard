@@ -17,11 +17,12 @@ type Hook = ViewHookInterface & {
 };
 
 function reformatNodeNames(data: GraphData) {
-  const nodes = (data.nodes ?? []).map(node => {
-    const label: string = node.label as string || "";
+  const nodes = (data.nodes ?? []).map((node) => {
+    const label: string = (node.label as string) || "";
 
-    const newLabel = label.split("\n")
-      .map(part => part.length < 60 ? part : part.slice(0, 60) + "...")
+    const newLabel = label
+      .split("\n")
+      .map((part) => (part.length < 60 ? part : part.slice(0, 60) + "..."))
       .join("\n");
 
     return { ...node, label: newLabel };
@@ -37,6 +38,16 @@ const DagreHook = {
 
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
+
+    this.graph.on("node:click", (e) => {
+      if ((e.originalEvent as MouseEvent).altKey) {
+        const [_, group] = e.propagationPath;
+
+        this.pushEvent("dagre:focus:path", {
+          path: group.cfg.item._cfg.model.path,
+        });
+      }
+    });
 
     this.isInPreviewMode = () => this.graph.getCurrentMode() === "preview";
     this.graph.setMode("preview");
@@ -77,15 +88,17 @@ const DagreHook = {
       this.graph.clear();
     });
 
-    document.getElementById("dagre-export-image")?.addEventListener("click", () => {
-      const oldRatio = this.graph.getZoom();
-      // this zoom is needed to make sure downloaded image is sharp
-      this.graph.zoomTo(1.0);
-      this.graph.downloadFullImage("pipelines-graph", "image/png", {
-        padding: [30, 15, 15, 15],
+    document
+      .getElementById("dagre-export-image")
+      ?.addEventListener("click", () => {
+        const oldRatio = this.graph.getZoom();
+        // this zoom is needed to make sure downloaded image is sharp
+        this.graph.zoomTo(1.0);
+        this.graph.downloadFullImage("pipelines-graph", "image/png", {
+          padding: [30, 15, 15, 15],
+        });
+        this.graph.zoomTo(oldRatio);
       });
-      this.graph.zoomTo(oldRatio);
-    });
 
     this.graph.on("beforemodechange", ({ mode }) => {
       if (mode === "preview") {
@@ -101,12 +114,12 @@ const DagreHook = {
       this.graph.fitView();
     });
 
-    this.handleEvent("dagre_data", (payload) => {
+    this.handleEvent("dagre:data", (payload) => {
       const data = reformatNodeNames((payload as DagreData).data);
 
       const topLevelCombos =
         data.combos?.filter((combo) => !combo.parentId) || [];
-      this.pushEvent("top-level-combos", topLevelCombos);
+      this.pushEvent("dagre:top-level-combos", topLevelCombos);
 
       if (this.graph.getNodes().length === 0) {
         this.graph.read(data);
@@ -117,7 +130,7 @@ const DagreHook = {
       }
     });
 
-    this.handleEvent("focus_combo", (payload) => {
+    this.handleEvent("dagre:focus:combo", (payload) => {
       this.graph.focusItem((payload as FocusComboData).id, true);
     });
   },

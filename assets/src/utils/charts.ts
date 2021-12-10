@@ -11,7 +11,7 @@ const metricToTitle: Record<string, string> = {
   take_and_demand: "Input buffer size inside take_and_demand/4",
   queue_len: "Message queue size (measured during buffer callback)",
   buffer: "Processed buffers per second (measured during buffer callback)",
-  bitrate: "Processed bytes per second (measured during buffer callback)"
+  bitrate: "Processed bytes per second (measured during buffer callback)",
 };
 
 export function createCharts(
@@ -41,6 +41,7 @@ export function createCharts(
           },
         },
         {
+          size: 70,
           stroke: "#c7d0d9",
           grid: {
             stroke: "#2c3235",

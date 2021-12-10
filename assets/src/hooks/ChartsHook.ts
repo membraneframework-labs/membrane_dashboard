@@ -23,13 +23,23 @@ interface RefreshData {
 
 const ChartsHook = {
   destroyed(this: Hook) {
-    // TODO: add removing charts when hooks gets destroyed (happens sometimes but don't know why yet)
+    this.charts.forEach((chart) => chart.destroy());
   },
   mounted(this: Hook) {
     this.charts = [];
 
+    window.addEventListener("resize", () => {
+      const size = getSize();
+      this.charts.forEach((chart) => {
+        chart.setSize({ ...size, height: chart.height });
+      });
+    });
+
     // creating empty charts with proper names and sizes
-    this.handleEvent("charts_init", (payload) => {
+    this.handleEvent("charts:init", (payload) => {
+      // destroy charts if they already exist, may happen on liveview reconnect
+      this.charts.forEach((chart) => chart.destroy());
+
       this.charts = [];
       const width = this.el.scrollWidth - 20;
       const metrics = (payload as InitData).data;
@@ -39,15 +49,8 @@ const ChartsHook = {
       }
     });
 
-    window.addEventListener("resize", () => {
-      const size = getSize();
-      this.charts.forEach(chart => {
-        chart.setSize({ ...size, height: chart.height });
-      });
-    });
-
     // full charts update
-    this.handleEvent("charts_data", (payload) => {
+    this.handleEvent("charts:data", (payload) => {
       const chartsData = (payload as RefreshData).data;
 
       for (let i = 0; i < chartsData.length; i++) {
@@ -79,7 +82,7 @@ const ChartsHook = {
     });
 
     // live update patch
-    this.handleEvent("charts_update", (payload) => {
+    this.handleEvent("charts:update", (payload) => {
       const chartsData = (payload as RefreshData).data;
 
       for (let i = 0; i < chartsData.length; i++) {
@@ -95,6 +98,18 @@ const ChartsHook = {
         }
         this.charts[i].setData(chartsData[i].data);
       }
+    });
+
+    this.handleEvent("charts:filter", (payload) => {
+      const { seriesPrefix } = payload as { seriesPrefix: string };
+
+      this.charts.forEach((chart) => {
+        chart.series.forEach((series, idx) => {
+          const show =
+            series?.label === "time" || series.label?.startsWith(seriesPrefix);
+          chart.setSeries(idx, { show });
+        });
+      });
     });
   },
 };
