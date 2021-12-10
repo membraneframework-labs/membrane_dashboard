@@ -39,15 +39,17 @@ const DagreHook = {
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
 
-    this.graph.on("node:click", (e) => {
-      if ((e.originalEvent as MouseEvent).altKey) {
-        const [_, group] = e.propagationPath;
+    for (const eventType of ["node:click", "combo:click"]) {
+      this.graph.on(eventType, (e) => {
+        if ((e.originalEvent as MouseEvent).altKey) {
+          const [_, group] = e.propagationPath;
 
-        this.pushEvent("dagre:focus:path", {
-          path: group.cfg.item._cfg.model.path,
-        });
-      }
-    });
+          this.pushEvent("dagre:focus:path", {
+            path: group.cfg.item._cfg.model.path,
+          });
+        }
+      });
+    }
 
     this.isInPreviewMode = () => this.graph.getCurrentMode() === "preview";
     this.graph.setMode("preview");
