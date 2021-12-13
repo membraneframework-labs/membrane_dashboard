@@ -12,18 +12,18 @@ interface FocusComboData {
 }
 
 type Hook = ViewHookInterface & {
-  dagrePlaceholder: HTMLElement;
+  controls: HTMLElement;
   graph: Graph;
   isInPreviewMode: () => boolean;
 };
 
 const DagreHook = {
   mounted(this: Hook) {
-    this.dagrePlaceholder = this.el.querySelector(dataId("dagre-placeholder"))!;
-    const width = this.dagrePlaceholder.scrollWidth - 20;
-    const height = this.dagrePlaceholder.scrollHeight;
+    const width = this.el.scrollWidth - 20;
+    const height = this.el.scrollHeight;
+    this.controls = document.getElementById("dagre-controls")!;
 
-    const graph = createDagre(this.dagrePlaceholder, width, height);
+    const graph = createDagre(this.el, width, height);
     this.graph = graph;
 
     // Attach listeners to allow for focusing certain pipelines/bins/elements
@@ -57,17 +57,9 @@ const DagreHook = {
     window.onresize = () => {
       if (!graph || graph.get("destroyed")) return;
       // eslint-disable-next-line
-      if (
-        !this.dagrePlaceholder ||
-        !this.dagrePlaceholder.scrollWidth ||
-        !this.dagrePlaceholder.scrollHeight
-      )
-        return;
+      if (!this.el || !this.el.scrollWidth || !this.el.scrollHeight) return;
 
-      this.graph.changeSize(
-        this.dagrePlaceholder.scrollWidth,
-        this.dagrePlaceholder.scrollHeight
-      );
+      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
     };
 
     const canvas = this.el.querySelector<HTMLCanvasElement>("canvas")!;
@@ -76,32 +68,32 @@ const DagreHook = {
       return false;
     };
 
-    maybeAddEventListener(this.el, "click", "dagre-mode", () => {
+    maybeAddEventListener(this.controls, "click", "dagre-mode", () => {
       const [newMode, innerText] = this.isInPreviewMode()
         ? ["snapshot", "Exit snapshot mode"]
         : ["preview", "Snapshot mode"];
 
       this.graph.setMode(newMode);
 
-      const dagreModeBtn = this.el.querySelector<HTMLElement>(
+      const dagreModeBtn = this.controls.querySelector<HTMLElement>(
         dataId("dagre-mode")
       )!;
       dagreModeBtn.innerText = innerText;
     });
 
-    maybeAddEventListener(this.el, "click", "dagre-fit-view", () => {
+    maybeAddEventListener(this.controls, "click", "dagre-fit-view", () => {
       this.graph.fitView();
     });
 
-    maybeAddEventListener(this.el, "click", "dagre-relayout", () => {
+    maybeAddEventListener(this.controls, "click", "dagre-relayout", () => {
       this.graph.layout();
     });
 
-    maybeAddEventListener(this.el, "click", "dagre-clear", () => {
+    maybeAddEventListener(this.controls, "click", "dagre-clear", () => {
       this.graph.clear();
     });
 
-    maybeAddEventListener(this.el, "click", "dagre-export-image", () => {
+    maybeAddEventListener(this.controls, "click", "dagre-export-image", () => {
       const oldRatio = this.graph.getZoom();
       // this zoom is needed to make sure downloaded image is sharp
       this.graph.zoomTo(1.0);
@@ -121,10 +113,7 @@ const DagreHook = {
     });
 
     this.graph.on("afterrender", () => {
-      this.graph.changeSize(
-        this.dagrePlaceholder.scrollWidth,
-        this.dagrePlaceholder.scrollHeight
-      );
+      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
       this.graph.fitView();
     });
 

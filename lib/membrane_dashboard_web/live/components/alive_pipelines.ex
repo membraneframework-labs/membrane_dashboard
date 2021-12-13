@@ -21,11 +21,20 @@ defmodule Membrane.DashboardWeb.Live.Components.AlivePipelines do
       <p>It may happen that pipeline terminating has not been registered. Here you can manually mark pipeline as dead.</p>
       <div id="alive-pipelines" class="DagreCombos">
         <%= for pipeline <- @alive_pipelines do %>
-          <div data-combo-id={pipeline} class={"Combo #{if not @is_marking_active, do: "unclickable", else: ""}"} phx-click={JS.push("pipelines:focus", value: %{pipeline: pipeline})} phx-target={@myself}>
+          <div
+            data-combo-id={pipeline}
+            class={"Combo #{if not @is_marking_active, do: "unclickable", else: ""}"}
+            phx-click={JS.push("pipelines:focus", value: %{pipeline: pipeline})}
+            phx-target={@myself}
+          >
             <%= pipeline %>
           </div>
         <% end %>
-        <div class={if @is_marking_active, do: "PipelineMarkingActive", else: "PipelineMarkingInactive"} phx-click="pipelines:toggle-marking">
+        <div
+          class={if @is_marking_active, do: "PipelineMarkingActive", else: "PipelineMarkingInactive"}
+          phx-click="pipelines:toggle-marking"
+          phx-target={@myself}
+        >
           <%= if @is_marking_active do %>
             Select pipeline
           <% else %>

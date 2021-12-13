@@ -45,33 +45,37 @@
     </div>
   </form>
 
+
   <h2>Pipeline diagrams</h2>
-
-  <div id="dagre-container" phx-hook="Dagre" class="Dagre" phx-update="ignore">
-    <div data-id="dagre-placeholder" class="placeholder"></div>
-
-    <div class="controls">
+  <div id="dagre-diagram" class="Dagre">
+    <div id="dagre-container" class="placeholder" phx-hook="Dagre" phx-update="ignore"> </div>
+    <div id="dagre-controls">
+      <%# TODO add explanation for snapshot mode %>
       <button data-id="dagre-mode" type="button" phx-update="ignore">Snapshot mode</button>
       <button data-id="dagre-fit-view" type="button" phx-update="ignore">Fit view</button>
       <button data-id="dagre-relayout">Relayout</button>
       <button data-id="dagre-clear">Clear</button>
       <button data-id="dagre-export-image">Export image</button>
-    </div>
-  </div>
 
-  <br/>
-  <p>In snapshot mode updates are suspended, so your interactions won't be interrupted.</p>
-
-  <%= if not is_nil(@top_level_combos) and length(@top_level_combos) > 0 do %>
-    <h3>Pipelines</h3>
-    <div id="top-level-combos" class="DagreCombos">
-      <%= for combo <- @top_level_combos do %>
-        <div data-combo-id={combo["id"]} class="Combo" phx-click={"dagre:focus:combo:#{combo["id"]}"}>
-          <%= combo["label"] %>
+      <%= if length(@top_level_combos || []) > 0 do %>
+        <div x-data="{ isOpen: false }" class="DropdownCombos">
+          <button 
+            @click="isOpen = !isOpen" 
+            @keydown.scape="isOpen = false"
+          >
+            Focus pipeline
+          </button>
+          <div x-show="isOpen" @click.away="isOpen = false" class="options">
+            <%= for combo <- @top_level_combos do %>
+              <div @click="isOpen = false" phx-click={"dagre:focus:combo:#{combo["id"]}"}>
+                <%= combo["label"] %>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
     </div>
-  <% end %>
+  </div>
 
   <%= if length(@alive_pipelines) > 0 do %>
     <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
