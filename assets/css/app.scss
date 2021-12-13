@@ -163,6 +163,10 @@
   .placeholder {
     height: 600px;
   }
+
+  &-focusMode {
+    border: 1px dashed red;
+  }
 }
 
 #dagre-controls {

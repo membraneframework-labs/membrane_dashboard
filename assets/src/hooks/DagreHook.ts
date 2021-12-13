@@ -12,6 +12,8 @@ interface FocusComboData {
 }
 
 type Hook = ViewHookInterface & {
+  isAltDown: boolean;
+  isMouseOverDiagram: boolean;
   controls: HTMLElement;
   graph: Graph;
   isInPreviewMode: () => boolean;
@@ -21,10 +23,24 @@ const DagreHook = {
   mounted(this: Hook) {
     const width = this.el.scrollWidth - 20;
     const height = this.el.scrollHeight;
+
+    this.isAltDown = false;
+    this.isMouseOverDiagram = false;
     this.controls = document.getElementById("dagre-controls")!;
 
     const graph = createDagre(this.el, width, height);
     this.graph = graph;
+
+    window.onresize = () => {
+      if (!graph || graph.get("destroyed")) return; // eslint-disable-next-line
+      if (!this.el || !this.el.scrollWidth || !this.el.scrollHeight) return;
+
+      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
+    };
+
+    // -------------------- //
+    // FOCUS MODE LISTENERS //
+    // -------------------- //
 
     // Attach listeners to allow for focusing certain pipelines/bins/elements
     // so that other parts of the dashboard can display limited information.
@@ -51,16 +67,49 @@ const DagreHook = {
       });
     }
 
+    const checkDiagramFocusMode = () => {
+      if (this.isAltDown && this.isMouseOverDiagram) {
+        document
+          .getElementById("dagre-diagram")!
+          .classList.add("Dagre-focusMode");
+      } else {
+        document
+          .getElementById("dagre-diagram")!
+          .classList.remove("Dagre-focusMode");
+      }
+    };
+
+    this.el.addEventListener("mouseenter", () => {
+      this.isMouseOverDiagram = true;
+      checkDiagramFocusMode();
+    });
+
+    this.el.addEventListener("mouseleave", () => {
+      this.isMouseOverDiagram = false;
+      checkDiagramFocusMode();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Alt") {
+        this.isAltDown = true;
+        checkDiagramFocusMode();
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "Alt") {
+        this.isAltDown = false;
+        checkDiagramFocusMode();
+      }
+    });
+
+    // ------------------ //
+    // CONTROLS LISTENERS //
+    // ------------------ //
+
+    // setting preview mode
     this.isInPreviewMode = () => this.graph.getCurrentMode() === "preview";
     this.graph.setMode("preview");
-
-    window.onresize = () => {
-      if (!graph || graph.get("destroyed")) return;
-      // eslint-disable-next-line
-      if (!this.el || !this.el.scrollWidth || !this.el.scrollHeight) return;
-
-      this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
-    };
 
     const canvas = this.el.querySelector<HTMLCanvasElement>("canvas")!;
     // disable double click from selecting text outside of canvas
@@ -103,6 +152,10 @@ const DagreHook = {
       this.graph.zoomTo(oldRatio);
     });
 
+    // --------------- //
+    // GRAPH LISTENERS //
+    // --------------- //
+
     this.graph.on("beforemodechange", ({ mode }) => {
       if (mode === "preview") {
         this.graph.getCombos().forEach((combo) => {
@@ -116,6 +169,10 @@ const DagreHook = {
       this.graph.changeSize(this.el.scrollWidth, this.el.scrollHeight);
       this.graph.fitView();
     });
+
+    // ------------------ //
+    // LV EVENT LISTENERS //
+    // ------------------ //
 
     this.handleEvent("dagre:data", (payload) => {
       const data = reformatNodeNames((payload as DagreData).data);
