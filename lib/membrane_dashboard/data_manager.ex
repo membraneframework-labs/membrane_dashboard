@@ -25,9 +25,19 @@ defmodule Membrane.Dashboard.DataManager do
     GenServer.cast(manager, {:query, options, self()})
   end
 
+  @spec loaded?(GenServer.t()) :: boolean()
+  def loaded?(manager) do
+    GenServer.call(manager, :loaded?)
+  end
+
   @impl true
   def init(_opts) do
     {:ok, %{charts_context: nil, alive_pipelines: [], last_query: nil}}
+  end
+
+  @impl true
+  def handle_call(:loaded?, _from, state) do
+    {:reply, !is_nil(state.charts_context), state}
   end
 
   @impl true

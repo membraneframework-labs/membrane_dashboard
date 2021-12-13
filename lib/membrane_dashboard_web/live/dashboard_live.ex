@@ -21,11 +21,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # - time range is the last `@initial_time_offset` seconds
   # - live update is enabled - now updates `@update_time` seconds after last sending data to uPlot
   # - charts are created based on current metrics in database
-  # - `paths` and `data` needed for live update have lists of empty lists
   @impl true
   def mount(_params, _session, socket) do
-    empty_lists = for _metric <- 1..length(@metrics), do: []
-
     if connected?(socket) do
       send(self(), {:charts_init, @metrics})
     end
@@ -41,22 +38,16 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
         # cached query data
         metrics: @metrics,
-        paths: empty_lists,
-        data: empty_lists,
         data_manager: nil,
 
         # real-time update timer
         update_ref: nil,
         update: false,
 
-        # data query task ref
-        query_task_ref: nil,
-
         # UI related
         elements_tree: %{},
         elements_select_state: %ElementsSelect.State{},
         data_loading: false,
-        pipeline_marking_active: false,
         top_level_combos: nil,
         alive_pipelines: []
       )
@@ -67,10 +58,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # updates charts and reloads dagree when live update is enabled
   @impl true
   def handle_params(%{"mode" => "update", "from" => from, "to" => to}, _session, socket) do
-    empty_lists = for _metric <- 1..length(socket.assigns.metrics), do: []
-
-    # if we have no data assigned then request the full query
-    if socket.assigns.data == empty_lists do
+    # if we are in update mode and there is no data then just push patch that will do the full query
+    if DataManager.loaded?(socket.assigns.data_manager) do
       socket
       |> push_patch_with_params(%{from: from, to: to})
       |> noreply()
@@ -105,8 +94,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       )
       |> noreply()
     else
-      something ->
-        Logger.error("Encountered invalid arguments when handling params: #{inspect(something)}")
+      error ->
+        Logger.error("Encountered invalid arguments when handling params: #{inspect(error)}")
+
         noreply(socket)
     end
   end
@@ -195,6 +185,23 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
+  #######################
+  ### ELEMENTS SELECT ###
+  #######################
+
+  def handle_info({:alive_pipelines, {:mark_dead, pipeline}}, socket) do
+    case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
+      {inserted, nil} when inserted > 0 ->
+        alive_pipelines = socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
+
+        assign(socket, alive_pipelines: alive_pipelines)
+
+      _ ->
+        socket
+    end
+    |> noreply()
+  end
+
   ######################
   ### OTHER MESSAGES ###
   ######################
@@ -265,35 +272,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   def handle_event("dagre:focus:combo:" <> combo_id, _value, socket) do
     socket
-    |> push_event("focus_combo", %{id: combo_id})
-    |> noreply()
-  end
-
-  #################################
-  ### PIPELINES FRONTEND EVENTS ###
-  #################################
-
-  def handle_event("pipelines:toggle-marking", _value, socket) do
-    socket
-    |> assign(pipeline_marking_active: !socket.assigns.pipeline_marking_active)
-    |> noreply()
-  end
-
-  def handle_event("pipelines:focus:" <> pipeline, _value, socket) do
-    if socket.assigns.pipeline_marking_active do
-      case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
-        {inserted, nil} when inserted > 0 ->
-          assign(socket,
-            pipeline_marking_active: false,
-            alive_pipelines: socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
-          )
-
-        _result ->
-          assign(socket, pipeline_marking_active: false)
-      end
-    else
-      socket
-    end
+    |> push_event("dagre:focus:combo", %{id: combo_id})
     |> noreply()
   end
 

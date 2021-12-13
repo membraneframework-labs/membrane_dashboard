@@ -66,7 +66,7 @@
     <h3>Pipelines</h3>
     <div id="top-level-combos" class="DagreCombos">
       <%= for combo <- @top_level_combos do %>
-        <div data-combo-id={combo["id"]} class="Combo" phx-click={"dagre:focus:combo:#{combo["id"]}#{combo["label"]}"}>
+        <div data-combo-id={combo["id"]} class="Combo" phx-click={"dagre:focus:combo:#{combo["id"]}"}>
           <%= combo["label"] %>
         </div>
       <% end %>
@@ -74,22 +74,7 @@
   <% end %>
 
   <%= if length(@alive_pipelines) > 0 do %>
-    <h3>Pipeline marking</h3>
-    <p>It may happen that pipeline terminating has not been registered. Here you can manually mark pipeline as dead.</p>
-    <div id="alive-pipelines" class="DagreCombos">
-      <%= for pipeline <- @alive_pipelines do %>
-        <div data-combo-id={pipeline} class={"Combo #{if not @pipeline_marking_active, do: "unclickable", else: ""}"} phx-click={"pipelines:focus:" <> pipeline}>
-          <%= pipeline %>
-        </div>
-      <% end %>
-      <div class={if @pipeline_marking_active, do: "PipelineMarkingActive", else: "PipelineMarkingInactive"} phx-click="pipelines:toggle-marking">
-        <%= if @pipeline_marking_active do %>
-          Select pipeline
-        <% else %>
-          Mark pipeline as dead
-        <% end %>
-      </div>
-    </div>
+    <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
   <% end %>
 
   <h2>Charts</h2>

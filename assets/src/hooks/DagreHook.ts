@@ -20,7 +20,6 @@ type Hook = ViewHookInterface & {
 const DagreHook = {
   mounted(this: Hook) {
     this.dagrePlaceholder = this.el.querySelector(dataId("dagre-placeholder"))!;
-    console.log(this.dagrePlaceholder, "hehe");
     const width = this.dagrePlaceholder.scrollWidth - 20;
     const height = this.dagrePlaceholder.scrollHeight;
 
