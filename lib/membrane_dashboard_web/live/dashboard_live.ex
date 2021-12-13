@@ -255,7 +255,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_event("dagre:focus:path", %{"path" => path}, socket) do
     state = %ElementsSelect.State{
       active_elements: path,
-      current_select_values: Map.keys(get_in(socket.assigns.elements_tree, path))
+      current_select_values: Map.keys(get_in(socket.assigns.elements_tree, path) || %{})
     }
 
     socket = assign(socket, elements_select_state: state)

@@ -1,7 +1,14 @@
 defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
+  @moduledoc """
+  Component for selecting and displaying currently selected elements' path
+  that can be further used for different kinds of filtering e.g. in charts.
+  """
+
   use Membrane.DashboardWeb, :live_component
 
   defmodule State do
+    @moduledoc false
+
     @type t :: %__MODULE__{
             current_select_values: [String.t()],
             active_elements: [String.t()]

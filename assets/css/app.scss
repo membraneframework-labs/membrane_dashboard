@@ -155,11 +155,24 @@
 }
 
 .Dagre {
-  height: 20%;
   width: 100%;
   @include pretty_border;
   margin-bottom: 2rem;
   overflow: hidden;
+
+  .placeholder {
+    height: 600px;
+  }
+
+  .controls {
+    button {
+      margin-right: 10px;
+    }
+
+    display: flex;
+    justify-content: center;
+    margin-top: 10px; // margin from the dagre placeholder
+  }
 }
 
 #dagre-controls {

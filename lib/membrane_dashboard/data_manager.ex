@@ -1,6 +1,7 @@
 defmodule Membrane.Dashboard.DataManager do
-  @moduledoc false
-  # module responsible for querying and caching data necessary for displaying on dashboard
+  @moduledoc """
+  Module responsible for querying and caching data necessary for displaying on dashboard
+  """
 
   use GenServer
 
@@ -25,7 +26,7 @@ defmodule Membrane.Dashboard.DataManager do
   end
 
   @impl true
-  def init(_) do
+  def init(_opts) do
     {:ok, %{charts_context: nil, alive_pipelines: [], last_query: nil}}
   end
 
@@ -73,8 +74,7 @@ defmodule Membrane.Dashboard.DataManager do
 
     context = %Context{context | data: charts, paths: paths, accumulators: accumulators}
 
-    elements_tree = group_paths(paths)
-    send_data(respond_to, :charts, {mode, charts, elements_tree})
+    send_data(respond_to, :charts, {mode, charts, elements_tree(paths)})
 
     alive_pipelines =
       Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
@@ -108,7 +108,13 @@ defmodule Membrane.Dashboard.DataManager do
     send(respond_to, {:data_query, type, data})
   end
 
-  def group_paths(paths) do
+  # Groups paths so that they create a tree of elements (nested maps, each key pointing to its children).
+  #
+  # By starting with a root element (a pipeline) we can go down the tree
+  # to checks for its children (either bins or elements) by eventually reaching
+  # the leafs which in this case should be simple elements.
+  # Leafs can be recognized as they point to empty maps.
+  defp elements_tree(paths) do
     paths
     |> List.flatten()
     |> MapSet.new()

@@ -6,7 +6,7 @@ export function createDagre(
   height: number
 ): Graph {
   return new Graph({
-    container: container.id,
+    container: container,
     width,
     height,
     fitView: true,
