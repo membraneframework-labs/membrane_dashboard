@@ -49,15 +49,15 @@ defmodule Membrane.DashboardWeb.Live.Components.AlivePipelines do
   @impl true
   def handle_event(
         "pipelines:focus",
-        %{value: %{pipeline: pipeline}},
+        %{"pipeline" => pipeline},
         %{assigns: %{is_marking_active: true}} = socket
       ) do
     send_self({:mark_dead, pipeline})
 
-    {:noreply, socket}
+    {:noreply, assign(socket, is_marking_active: false)}
   end
 
-  def handle_event("pipelines:focus", _params, socket) do
+  def handle_event("pipelines:focus", params, %{assigns: %{is_marking_active: false}} = socket) do
     {:noreply, socket}
   end
 

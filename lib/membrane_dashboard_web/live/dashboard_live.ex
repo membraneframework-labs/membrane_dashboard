@@ -59,7 +59,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_params(%{"mode" => "update", "from" => from, "to" => to}, _session, socket) do
     # if we are in update mode and there is no data then just push patch that will do the full query
-    if DataManager.loaded?(socket.assigns.data_manager) do
+    if DataManager.loaded?(socket.assigns.data_manager |> elem(1)) do
       socket
       |> push_patch_with_params(%{from: from, to: to})
       |> noreply()
@@ -190,6 +190,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   #######################
 
   def handle_info({:alive_pipelines, {:mark_dead, pipeline}}, socket) do
+    IO.inspect("Marking pipeline as dead")
+
     case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
       {inserted, nil} when inserted > 0 ->
         alive_pipelines = socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
@@ -197,6 +199,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         assign(socket, alive_pipelines: alive_pipelines)
 
       _ ->
+        Logger.error("Tried to mark '#{pipeline}' as dead while not being alive...")
         socket
     end
     |> noreply()
