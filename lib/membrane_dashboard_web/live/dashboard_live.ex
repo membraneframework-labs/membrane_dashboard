@@ -190,15 +190,13 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   #######################
 
   def handle_info({:alive_pipelines, {:mark_dead, pipeline}}, socket) do
-    IO.inspect("Marking pipeline as dead")
-
     case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
       {inserted, nil} when inserted > 0 ->
         alive_pipelines = socket.assigns.alive_pipelines |> Enum.reject(&(&1 == pipeline))
 
         assign(socket, alive_pipelines: alive_pipelines)
 
-      _ ->
+      _other ->
         Logger.error("Tried to mark '#{pipeline}' as dead while not being alive...")
         socket
     end
