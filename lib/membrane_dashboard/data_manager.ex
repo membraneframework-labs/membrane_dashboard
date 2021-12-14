@@ -20,12 +20,12 @@ defmodule Membrane.Dashboard.DataManager do
     GenServer.start(__MODULE__, [])
   end
 
-  @spec query(GenServer.t(), keyword()) :: :ok
+  @spec query(GenServer.server(), keyword()) :: :ok
   def query(manager, options) do
     GenServer.cast(manager, {:query, options, self()})
   end
 
-  @spec loaded?(GenServer.t()) :: boolean()
+  @spec loaded?(GenServer.server()) :: boolean()
   def loaded?(manager) do
     GenServer.call(manager, :loaded?)
   end
