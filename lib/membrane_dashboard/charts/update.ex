@@ -55,7 +55,7 @@ defmodule Membrane.Dashboard.Charts.Update do
     - full data as 3d list;
     - list of all paths.
   """
-  @spec query(context :: update_context_t()) :: Charts.chart_query_result_t()
+  @spec query(Context.t()) :: Charts.chart_query_result_t()
   def query(
         %Context{metrics: metrics, time_from: time_from, time_to: time_to, accuracy: accuracy} =
           context
