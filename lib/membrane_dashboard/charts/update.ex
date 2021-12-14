@@ -38,6 +38,7 @@ defmodule Membrane.Dashboard.Charts.Update do
 
   alias Membrane.Dashboard.Repo
   alias Membrane.Dashboard.Charts
+  alias Membrane.Dashboard.Charts.Context
 
   @type update_context_t :: %{
           accuracy: non_neg_integer(),
@@ -54,19 +55,16 @@ defmodule Membrane.Dashboard.Charts.Update do
     - full data as 3d list;
     - list of all paths.
   """
-  @spec query(
-          context :: update_context_t(),
-          time_from :: non_neg_integer(),
-          time_to :: non_neg_integer()
-        ) :: Charts.chart_query_result_t()
-  def query(context, time_from, time_to) do
-    %{
-      metrics: metrics,
+  @spec query(Context.t()) :: Charts.chart_query_result_t()
+  def query(
+        %Context{metrics: metrics, time_from: time_from, time_to: time_to, accuracy: accuracy} =
+          context
+      ) do
+    %Context{
       paths: paths,
       data: data,
-      data_accumulators: data_accumulators,
-      accuracy: accuracy,
-      time_to: last_time_to
+      accumulators: data_accumulators,
+      latest_time: last_time_to
     } = context
 
     update_from = last_time_to + accuracy

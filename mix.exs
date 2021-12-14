@@ -7,7 +7,7 @@ defmodule Membrane.Dashboard.MixProject do
       version: "0.3.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:phoenix, :gettext] ++ Mix.compilers(),
+      compilers: [:phoenix] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -17,7 +17,7 @@ defmodule Membrane.Dashboard.MixProject do
   def application do
     [
       mod: {Membrane.Dashboard.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:crypto, :logger, :runtime_tools]
     ]
   end
 
@@ -28,18 +28,17 @@ defmodule Membrane.Dashboard.MixProject do
     [
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0.0", only: :dev, runtime: false},
-      {:phoenix, "~> 1.5.8"},
-      {:phoenix_ecto, "~> 4.1"},
+      {:phoenix, "~> 1.6.2"},
+      {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.4"},
-      {:postgrex, ">= 0.0.0"},
-      {:phoenix_live_view, "~> 0.15.1"},
+      {:postgrex, ">= 0.15.11"},
+      {:phoenix_live_view, "~> 0.17.5"},
       {:floki, ">= 0.27.0", only: :test},
-      {:phoenix_html, "~> 2.11"},
+      {:phoenix_html, "~> 3.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_dashboard, "~> 0.4"},
+      {:phoenix_live_dashboard, "~> 0.5"},
       {:telemetry_metrics, "~> 0.4"},
       {:telemetry_poller, "~> 0.4"},
-      {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.5", only: :dev}

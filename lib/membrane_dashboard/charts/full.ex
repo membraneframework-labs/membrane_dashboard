@@ -13,6 +13,7 @@ defmodule Membrane.Dashboard.Charts.Full do
 
   alias Membrane.Dashboard.Repo
   alias Membrane.Dashboard.Charts
+  alias Membrane.Dashboard.Charts.Context
 
   @doc """
   Queries database and marshals data to a format suitable for uPlot.
@@ -21,9 +22,9 @@ defmodule Membrane.Dashboard.Charts.Full do
   chart paths (each chart has its own list of component paths) and a list
   of chart accumulators that can be reused by the chart in case of an real-time update (e.g. to cache some necessary information).
   """
-  @spec query([String.t()], non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+  @spec query(Context.t()) ::
           Charts.chart_query_result_t()
-  def query(metrics, time_from, time_to, accuracy) do
+  def query(%Context{time_from: time_from, time_to: time_to, accuracy: accuracy, metrics: metrics}) do
     case create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
       {:ok, %Postgrex.Result{rows: rows}} ->
         rows_by_metrics = group_rows_by_metrics(rows)

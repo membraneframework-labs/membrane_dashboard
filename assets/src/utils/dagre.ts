@@ -6,7 +6,7 @@ export function createDagre(
   height: number
 ): Graph {
   return new Graph({
-    container: container.id,
+    container: container,
     width,
     height,
     fitView: true,
@@ -15,10 +15,7 @@ export function createDagre(
     groupByTypes: false,
     enabledStack: false,
     modes: {
-      preview: [
-        "drag-canvas",
-        "zoom-canvas",
-      ],
+      preview: ["drag-canvas", "zoom-canvas"],
       snapshot: [
         "drag-combo",
         "drag-node",

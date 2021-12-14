@@ -165,7 +165,8 @@ defmodule Membrane.Dashboard.Dagre.G6Marshaller do
     %{
       id: id,
       label: label,
-      parentId: parent_id
+      parentId: parent_id,
+      path: path
     }
   end
 

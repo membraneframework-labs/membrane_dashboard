@@ -1,6 +1,12 @@
 /* This file is for your main application css. */
 @import "./phoenix.css";
 @import "./progress-bar.scss";
+@import "./uplot.scss";
+
+@mixin pretty_border {
+  border: 1px solid #ccc;
+  border-radius: 16px;
+}
 
 /* LiveView specific classes for your customizations */
 .phx-no-feedback.invalid-feedback,
@@ -70,16 +76,7 @@
   border: 1px solid transparent;
   border-radius: 4px;
 }
-.alert-info {
-  color: #31708f;
-  background-color: #d9edf7;
-  border-color: #bce8f1;
-}
-.alert-warning {
-  color: #8a6d3b;
-  background-color: #fcf8e3;
-  border-color: #faebcc;
-}
+
 .alert-danger {
   color: #a94442;
   background-color: #f2dede;
@@ -112,6 +109,27 @@
   display: inline;
 }
 
+// ############################3
+
+#date-inputs {
+  display: flex;
+  align-items: end;
+
+  div {
+    margin-right: 10px;
+  }
+}
+
+#search-button {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.3rem;
+
+  button {
+    margin-bottom: 0;
+  }
+}
+
 .SearchButtons {
   display: flex;
   justify-content: start;
@@ -131,48 +149,74 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  @include pretty_border;
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 16px;
   margin-bottom: 2rem;
 }
 
 .Dagre {
-  height: 20%;
   width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 16px;
+  @include pretty_border;
   margin-bottom: 2rem;
   overflow: hidden;
+
+  .placeholder {
+    height: 600px;
+  }
+
+  &-focusMode {
+    border: 1px dashed red;
+  }
 }
 
 #dagre-controls {
+  button {
+    margin-right: 10px;
+  }
+
   display: flex;
   justify-content: center;
+  margin-top: 10px; // margin from the dagre placeholder
+}
 
-  button {
-    margin: 5px;
-  }
+.ActiveDottedBorder {
+  border: 2px dotted #db4040;
+  border-radius: 16px;
 }
 
 .DagreCombos {
   display: flex;
   flex-direction: row;
-  border: 1px solid #ccc;
-  border-radius: 16px;
+  @include pretty_border;
   padding: 5px;
   margin-bottom: 10px;
   min-height: 50px;
 
   .Combo {
     padding: 10px 10px;
-    border-radius: 16px;
-    border: 1px solid #ccc;
+    @include pretty_border;
     margin: 0 10px;
     cursor: pointer;
     &:hover {
       background-color: #90909052;
     }
+  }
+}
+
+.DropdownCombos {
+  position: relative;
+
+  .options {
+    @include pretty_border;
+    border-radius: 8px;
+    background-color: #333333;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    top: -20px;
+    left: -20px;
+    cursor: pointer;
   }
 }
 
@@ -182,11 +226,37 @@
   justify-content: center;
   align-items: center;
   font-weight: 500;
-  border: 1px white solid;
-  border-radius: 10px;
+  @include pretty_border;
   padding: 10px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+}
+
+.ElementsSelect {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+
+  form {
+    margin-bottom: 0;
+  }
+
+  select {
+    max-width: 400px;
+  }
+
+  .activeElements {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+
+    div {
+      @include pretty_border;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: fit-content;
+    }
+  }
 }
 
 .PipelineMarkingActive {
@@ -198,10 +268,6 @@
   @extend .PipelineMarking;
 }
 
-.TimeRange {
-  margin-bottom: 10px;
-}
-
 *::-webkit-scrollbar {
   width: 6px;
 }
@@ -209,154 +275,4 @@
 *::-webkit-scrollbar-thumb {
   background-color: #c7d0d9;
   border-radius: 20px;
-}
-
-/* uPlot charts */
-.uplot,
-.uplot *,
-.uplot *::before,
-.uplot *::after {
-  box-sizing: border-box;
-}
-
-.uplot {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol", "Noto Color Emoji";
-  line-height: 1.5;
-  width: min-content;
-}
-
-.u-title {
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.u-wrap {
-  position: relative;
-  user-select: none;
-  padding-left: 10px;
-}
-
-.u-over,
-.u-under {
-  position: absolute;
-}
-
-.u-under {
-  overflow: hidden;
-}
-
-.uplot canvas {
-  display: block;
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.u-legend {
-  font-size: 12px;
-  height: 160px;
-  margin: auto;
-  overflow: hidden;
-  overflow-y: scroll;
-  padding: 10px;
-}
-
-.u-inline {
-  display: block;
-}
-
-.u-inline * {
-  display: block;
-}
-
-.u-inline tr {
-  margin-right: 16px;
-}
-
-.u-legend th {
-  font-weight: 600;
-}
-
-.u-legend th > * {
-  vertical-align: middle;
-  display: inline-block;
-}
-
-.u-legend .u-marker {
-  width: 1em;
-  height: 1em;
-  margin-right: 4px;
-  background-clip: content-box !important;
-}
-
-.u-inline.u-live th::after {
-  content: ":";
-  vertical-align: middle;
-}
-
-.u-inline:not(.u-live) .u-value {
-  display: none;
-}
-
-.u-series > * {
-  padding: 4px;
-  display: inline-block;
-}
-
-.u-series th {
-  cursor: pointer;
-}
-
-.u-legend .u-off > * {
-  opacity: 0.3;
-}
-
-.u-select {
-  background: rgba(255, 255, 255, 0.07);
-  position: absolute;
-  pointer-events: none;
-}
-
-.u-cursor-x,
-.u-cursor-y {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-  will-change: transform;
-  z-index: 100;
-}
-
-.u-hz .u-cursor-x,
-.u-vt .u-cursor-y {
-  height: 100%;
-  border-right: 1px dashed #607d8b;
-}
-
-.u-hz .u-cursor-y,
-.u-vt .u-cursor-x {
-  width: 100%;
-  border-bottom: 1px dashed #607d8b;
-}
-
-.u-cursor-pt {
-  position: absolute;
-  top: 0;
-  left: 0;
-  border-radius: 50%;
-  pointer-events: none;
-  will-change: transform;
-  z-index: 100;
-  /*this has to be !important since we set inline "background" shorthand */
-  background-clip: content-box !important;
-}
-
-.u-select.u-off,
-.u-cursor-x.u-off,
-.u-cursor-y.u-off,
-.u-cursor-pt.u-off {
-  display: none;
 }

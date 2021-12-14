@@ -122,7 +122,7 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   # converts rows from `measurements` table to list of tuples `{path, data}`, where data is a list of tuples contatining timestamps and values
   defp rows_to_data_by_paths(rows) do
     Enum.group_by(rows, fn [_time, path, _value] -> path end, fn [time, _path, value] ->
-      {time, value}
+      {Decimal.to_float(time), value}
     end)
   end
 

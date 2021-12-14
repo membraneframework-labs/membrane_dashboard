@@ -12,6 +12,7 @@ import "../css/app.scss";
 //     import socket from "./socket"
 //
 import "phoenix_html";
+import Alpine from "alpinejs";
 
 import DagreHook from "./hooks/DagreHook";
 import ChartsHook from "./hooks/ChartsHook";
@@ -22,6 +23,7 @@ import topbar from "topbar";
 declare global {
   interface Window {
     liveSocket: LiveSocket;
+    Alpine: object;
   }
 }
 
@@ -30,13 +32,28 @@ const Hooks = {
   Charts: ChartsHook,
 };
 
-let csrfToken = document
+const csrfToken = document
   .querySelector("meta[name='csrf-token']")!
   .getAttribute("content");
 
-let liveSocket = new LiveSocket("/live", Socket, {
+// Initialize Alpine.js
+window.Alpine = Alpine;
+Alpine.start();
+
+const liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
   hooks: Hooks,
+  dom: {
+    onBeforeElUpdated(from, to) {
+      // @ts-ignore
+      if (from._x_dataStack) {
+        // @ts-ignore
+        window.Alpine.clone(from, to);
+        return true;
+      }
+      return false;
+    },
+  },
 });
 
 // Show progress bar on live navigation and form submits
