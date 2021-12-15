@@ -43,7 +43,7 @@
             value={@accuracy} 
             name="accuracy" 
             phx-debounce="blur" 
-            class="default-input mr-2"
+            class="default-input w-24 mr-2"
           />
           <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div>
           <button name="button" type="submit" class="default-button">Apply</button>
@@ -73,14 +73,9 @@
               class="default-button" 
               >
               <%= if @data_loading do %>
-                <svg class="animate-spin default-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+                <.circular_progress_icon class="mr-2" />
               <% else %>
-                <svg class="default-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M16.32 14.9l5.39 5.4a1 1 0 0 1-1.42 1.4l-5.38-5.38a8 8 0 1 1 1.41-1.41zM10 16a6 6 0 1 0 0-12 6 6 0 0 0 0 12z" />
-                </svg>
+                <.search_icon class="mr-2" />
               <% end %>
               Search
             </button>
@@ -94,9 +89,7 @@
               @keydown.escape="open = false"
               class="default-button h-full"
             >
-              <svg class="default-icon m-0" claxmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M 12 2 C 6.4889971 2 2 6.4889971 2 12 C 2 17.511003 6.4889971 22 12 22 C 17.511003 22 22 17.511003 22 12 C 22 6.4889971 17.511003 2 12 2 z M 12 4 C 16.430123 4 20 7.5698774 20 12 C 20 16.430123 16.430123 20 12 20 C 7.5698774 20 4 16.430123 4 12 C 4 7.5698774 7.5698774 4 12 4 z M 11 6 L 11 12.414062 L 15.292969 16.707031 L 16.707031 15.292969 L 13 11.585938 L 13 6 L 11 6 z"></path>
-              </svg>
+              <.clock_icon />
             </button>
             <div x-show="open" @click.away="open = false" class="dropdown-container">
               <%= for {label, range} <- [{"Last minute", "1"}, {"Last 3 minutes", "3"}] do %>
@@ -130,34 +123,49 @@
         <div id="dagre-container" class="flex-grow w-full" phx-hook="Dagre" phx-update="ignore"> </div>
         <div id="dagre-controls" class="flex text-white p-4">
           <%# TODO add explanation for snapshot mode %>
-          <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">Snapshot mode</button>
-          <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">Fit view</button>
-          <button data-id="dagre-relayout" class="default-button mr-3">Relayout</button>
-          <button data-id="dagre-clear" class="default-button mr-3">Clear</button>
-          <button data-id="dagre-export-image" class="default-button mr-3">Export image</button>
+          <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
+            Snapshot mode: OFF
+          </button>
+          <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
+            <.fullscreen_exit_icon class="mr-2" />
+            Fit view
+          </button>
+          <button data-id="dagre-relayout" class="default-button mr-3">
+            <.layout_icon class="mr-1" />
+            Relayout
+          </button>
+          <button data-id="dagre-export-image" class="default-button mr-3">
+            <.image_icon class="mr-1" />
+            Export
+          </button>
 
-          <%= if length(@top_level_combos || []) > 0 do %>
-            <div x-data="{ open: false }" class="relative">
-              <button 
-                @click="open = !open" 
-                @keydown.scape="open = false"
-                class="default-button"
-              >
-                Focus pipeline
-              </button>
-              <div x-show="open" @click.away="open = false" class="dropdown-container w-64 bottom-2">
-                <%= for combo <- @top_level_combos do %>
-                  <div 
-                    @click="open = false" 
-                    phx-click={"dagre:focus:combo:#{combo["id"]}"}
-                    class="dropdown-option"
-                  >
-                    <%= combo["label"] %>
-                  </div>
-                <% end %>
+          <div id="top-level-combos">
+            <%= if length(@top_level_combos || []) > 0 do %>
+              <div x-data="{ open: false }" class="relative mr-3">
+                <button 
+                  @click="open = !open" 
+                  @keydown.scape="open = false"
+                  class="default-button"
+                >
+                  <.focus_icon class="mr-1" />
+                  Focus pipeline
+                </button>
+                <div x-show="open" @click.away="open = false" class="dropdown-container w-64 bottom-2">
+                  <%= for combo <- @top_level_combos do %>
+                    <div 
+                      @click="open = false" 
+                      phx-click={"dagre:focus:combo:#{combo["id"]}"}
+                      class="dropdown-option"
+                    >
+                      <%= combo["label"] %>
+                    </div>
+                  <% end %>
+                </div>
               </div>
-            </div>
-          <% end %>
+            <% end %>
+          </div>
+
+          <button data-id="dagre-clear" phx-update="ignore" class="danger-button mr-3">Clear</button>
         </div>
       </div>
     </div>

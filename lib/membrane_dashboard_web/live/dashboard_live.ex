@@ -8,6 +8,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
   alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
+  import Membrane.DashboardWeb.Live.Helpers
+
   require Logger
 
   @metrics ["caps", "event", "store", "take_and_demand", "buffer", "queue_len", "bitrate"]
@@ -99,6 +101,21 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
         noreply(socket)
     end
+  end
+
+  ###########################
+  ### FUNCTION COMPONENTS ###
+  ###########################
+
+  def remix_icon(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:class, fn -> "" end)
+      |> assign(:attrs, assigns_to_attributes(assigns, [:icon, :class]))
+
+    ~H"""
+    <i class={"ri-#{@icon} #{@class}"} aria-hidden="true" {@attrs}></i>
+    """
   end
 
   # inits, realoads or updates charts and reloads dagre

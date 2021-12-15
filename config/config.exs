@@ -6,8 +6,13 @@ config :membrane_dashboard,
 config :esbuild,
   version: "0.12.15",
   default: [
-    args:
-      ~w(src/index.ts --bundle --target=es2017 --outfile=../priv/static/assets/js/app.js --external:/images/*),
+    args: ~w(
+        src/index.ts
+        --bundle
+        --target=es2017
+        --outfile=../priv/static/assets/js/app.js
+        --external:/images/*
+      ),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ]

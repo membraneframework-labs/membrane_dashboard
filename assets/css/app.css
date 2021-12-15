@@ -5,12 +5,19 @@
 @tailwind utilities;
 
 @layer components {
+  .base-button {
+    @apply flex justify-center items-center rounded-md text-white font-semibold px-2 py-1;
+  }
   .default-button {
-    @apply flex justify-center items-center rounded-md text-white font-semibold px-2 py-1 bg-indigo-700 hover:bg-indigo-800 disabled:bg-indigo-900 disabled:text-gray-200;
+    @apply base-button bg-indigo-700 hover:bg-indigo-800 disabled:bg-indigo-900 disabled:text-gray-200;
+  }
+
+  .danger-button {
+    @apply base-button bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:text-gray-200;
   }
 
   .default-icon {
-    @apply h-5 w-5 mr-3 text-white;
+    @apply h-5 w-5 text-white;
   }
 
   .header {
