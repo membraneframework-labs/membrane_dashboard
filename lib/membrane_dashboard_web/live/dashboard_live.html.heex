@@ -34,7 +34,7 @@
 
     <div id="search-controls" class="flex flex-1 justify-end items-center">
       <form phx-submit="search:apply-accuracy" >
-        <div class="flex flex-row justify-center items-center mr-2">
+        <div class="flex flex-row justify-center items-center mr-3">
           <label class="text-white font-semibold mr-2">Accuracy: </label>
           <input 
             id="accuracy" 
@@ -46,7 +46,9 @@
             class="default-input w-24 mr-2"
           />
           <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div>
-          <button name="button" type="submit" class="default-button">Apply</button>
+          <button name="button" type="submit" class="default-button h-8">
+            <.ruler_icon />
+          </button>
         </div>
       </form>
 
