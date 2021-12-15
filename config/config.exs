@@ -3,6 +3,15 @@ import Config
 config :membrane_dashboard,
   ecto_repos: [Membrane.Dashboard.Repo]
 
+config :esbuild,
+  version: "0.12.15",
+  default: [
+    args:
+      ~w(src/index.ts --bundle --target=es2017 --outfile=../priv/static/assets/js/app.js --external:/images/*),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ]
+
 # Configures the endpoint
 config :membrane_dashboard, Membrane.DashboardWeb.Endpoint,
   render_errors: [view: Membrane.DashboardWeb.ErrorView, accepts: ~w(html json), layout: false],

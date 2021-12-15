@@ -301,7 +301,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         push_patch_with_params(socket, %{
           from: now(-60 * minutes_as_int),
           to: now(),
-          update: true,
           update_range: 60 * minutes_as_int
         })
 

@@ -1,0 +1,55 @@
+@import "./uplot.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .default-button {
+    @apply flex justify-center items-center rounded-md text-white font-semibold px-2 py-1 bg-indigo-700 hover:bg-indigo-800 disabled:bg-indigo-900 disabled:text-gray-200;
+  }
+
+  .default-icon {
+    @apply h-5 w-5 mr-3 text-white;
+  }
+
+  .header {
+    @apply text-4xl text-white font-bold;
+  }
+
+  .subheader {
+    @apply text-2xl text-white font-semibold;
+  }
+
+  .description {
+    @apply text-lg text-white;
+  }
+
+  .dagre {
+    height: 600px;
+  }
+
+  .dagre-focus-mode {
+    @apply border border-2 border-red-500 border-dashed;
+  }
+
+  .dropdown-container {
+    @apply absolute overflow-hidden rounded-md bg-secondary w-40 my-2 right-1  border border-gray-300/25;
+  }
+
+  .dropdown-option {
+    @apply text-white font-semibold p-4 w-full cursor-pointer hover:bg-primary;
+  }
+
+  .default-input {
+    @apply bg-white text-black font-medium px-2 py-1 rounded-md outline-zinc-600;
+  }
+}
+
+input:checked ~ .switch-dot {
+  transform: translateX(100%);
+}
+
+input:checked ~ .switch-line {
+  @apply bg-indigo-700;
+}

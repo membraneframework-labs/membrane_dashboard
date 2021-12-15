@@ -71,11 +71,11 @@ const DagreHook = {
       if (this.isAltDown && this.isMouseOverDiagram) {
         document
           .getElementById("dagre-diagram")!
-          .classList.add("Dagre-focusMode");
+          .classList.add("dagre-focus-mode");
       } else {
         document
           .getElementById("dagre-diagram")!
-          .classList.remove("Dagre-focusMode");
+          .classList.remove("dagre-focus-mode");
       }
     };
 
