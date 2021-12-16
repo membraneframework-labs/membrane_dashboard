@@ -51,6 +51,23 @@
   .default-input {
     @apply bg-white text-black font-medium px-2 py-1 rounded-md outline-zinc-600;
   }
+
+  .custom-uplot-chart {
+    @apply rounded-xl bg-secondary my-3 mb-3 overflow-hidden;
+  }
+
+  /* UPlot custom styles */
+  .u-title {
+    @apply flex justify-center items-center text-white font-bold text-lg p-2;
+  }
+
+  .u-label {
+    @apply text-white font-normal;
+  }
+
+  .u-value {
+    @apply text-white font-semibold;
+  }
 }
 
 input:checked ~ .switch-dot {

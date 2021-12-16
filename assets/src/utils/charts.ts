@@ -27,7 +27,7 @@ export function createCharts(
       height: 200,
       title: metricToTitle[metric] ?? metric,
       id: metric,
-      class: "my-chart",
+      class: "custom-uplot-chart",
       series: [],
       axes: [
         {

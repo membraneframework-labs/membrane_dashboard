@@ -14,12 +14,6 @@
   width: min-content;
 }
 
-.u-title {
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-}
-
 .u-wrap {
   position: relative;
   user-select: none;
