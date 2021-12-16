@@ -40,15 +40,6 @@ defmodule Membrane.Dashboard.Charts.Update do
   alias Membrane.Dashboard.Charts
   alias Membrane.Dashboard.Charts.Context
 
-  @type update_context_t :: %{
-          accuracy: non_neg_integer(),
-          metrics: [String.t()],
-          paths: [String.t()],
-          data: [[integer()]],
-          data_accumulators: [any()],
-          time_to: non_neg_integer()
-        }
-
   @doc """
   Returns:
     - update data for uPlot, where new data is from between `time_from` and `time_to`. Consists of new series and full data for charts;
@@ -162,7 +153,7 @@ defmodule Membrane.Dashboard.Charts.Update do
     {new_data, accumulator} =
       extract_new_data(metric, accumulator, accuracy, update_from, time_to, rows, all_paths)
 
-    [old_timestamps | old_values] = old_data
+    [old_timestamps | old_values] = old_data.data
 
     truncated_timestamps =
       Enum.drop_while(old_timestamps, fn timestamp -> timestamp < to_seconds(time_from) end)

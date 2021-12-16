@@ -88,7 +88,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket) do
       socket
-      |> schedule_query(from, to, mode: :full, accuracy: accuracy, metrics: @metrics)
+      |> schedule_query(from, to,
+        mode: if(update, do: :update, else: :full),
+        accuracy: accuracy,
+        metrics: @metrics
+      )
       |> assign(
         accuracy: accuracy,
         update: update,

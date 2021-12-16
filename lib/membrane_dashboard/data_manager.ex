@@ -107,7 +107,11 @@ defmodule Membrane.Dashboard.DataManager do
   defp merge_contexts(nil, new_context), do: new_context
 
   defp merge_contexts(old_context, new_context) do
-    struct(old_context, Map.take(new_context, [:time_from, :time_to, :metrics, :accuracy]))
+    latest_time_to = old_context.time_to
+
+    old_context
+    |> struct(Map.take(new_context, [:time_from, :time_to, :metrics, :accuracy]))
+    |> Map.replace!(:latest_time, latest_time_to)
   end
 
   defp send_data(respond_to, type) do
