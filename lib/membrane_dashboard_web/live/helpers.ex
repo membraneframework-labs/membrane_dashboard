@@ -82,6 +82,16 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  def arrow_down_icon(assigns) do
+    assigns = assign_class(assigns)
+
+    ~H"""
+    <svg class={"default-icon #{@class}"} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+      <path stroke="none" fill="currentColor" d="M13 16.172l5.364-5.364 1.414 1.414L12 20l-7.778-7.778 1.414-1.414L11 16.172V4h2v12.172z"/>
+    </svg>
+    """
+  end
+
   defp assign_class(assigns) do
     assign_new(assigns, :class, fn -> "" end)
   end

@@ -176,10 +176,10 @@
       <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
     <% end %>
 
-    <h2 class="header mb-4">Charts</h2>
-    <h3 class="subheader">Elements path</h3>
-    <p class="description">You may want to filter charts to a subset of elements or a single particular element, you can do so by selecting elements' path</p>
-    <.live_component module={Membrane.DashboardWeb.Live.Components.ElementsSelect} id="elements-select" elements_tree={@elements_tree} state={@elements_select_state} disabled={@data_loading} />
-    <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
+    <div id="charts" class="m-4">
+      <h2 class="header mb-4">Charts</h2>
+      <.live_component module={Membrane.DashboardWeb.Live.Components.ElementsSelect} id="elements-select" elements_tree={@elements_tree} state={@elements_select_state} disabled={@data_loading} />
+      <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
+    </div>
   </div>
 </div>

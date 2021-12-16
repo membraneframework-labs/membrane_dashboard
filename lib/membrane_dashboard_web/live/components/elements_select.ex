@@ -6,6 +6,9 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
 
   use Membrane.DashboardWeb, :live_component
 
+  alias Phoenix.LiveView.JS
+  import Membrane.DashboardWeb.Live.Helpers, only: [arrow_down_icon: 1]
+
   defmodule State do
     @moduledoc false
 
@@ -25,79 +28,50 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={@id} class="ElementsSelect">
-      <div class="activeElements">
-        <%= if @state.active_elements != [] do %>
-            <%= for element <- @state.active_elements do %>
-              <div>
+    <div id={@id} class="flex flex-col mb-3">
+      <h3 class="subheader">Focused path</h3>
+      <p class="description mb-3">You may want to filter charts to a subset of elements or a single particular element, you can do so by selecting elements' path</p>
+      <%= if length(@state.active_elements) > 0 do %>
+        <div class="flex flex-col justify-center bg-secondary rounded-xl w-fit p-3">
+          <%= for element <- Enum.intersperse(@state.active_elements, :icon) do %>
+            <%= if element == :icon do %>
+              <div class="flex justify-center items-center p-2">
+                <.arrow_down_icon />
+              </div>
+            <% else %>
+              <div class="text-white rounded-lg bg-primary border border-gray-300/25 p-3 mb-2">
                 <%= element %>
               </div>
             <% end %>
-        <% end %>
-      </div>
-      <form phx-change="change" phx-submit="submit" phx-target={@myself}>
-        <div>
-          <select id="select-current-element" name="value" disabled={@disabled}>
-            <option selected={true} disabled>Choose element</option>
-            <%= for {value, idx} <- Enum.with_index(@state.current_select_values) do %>
-              <option value={idx + 1} selected={false}>
-                <%= value %>
-              </option>
-            <% end %>
-          </select>
-          <button name="add-to-path" type="submit" disabled={@disabled}>
-            Add to path
-          </button>
-          <button type="button" phx-click="filter-active-elements" disabled={@disabled} phx-target={@myself}>
-            Apply active elements filter
-          </button>
-          <button type="button" phx-click="reset-active-elements" disabled={@disabled} phx-target={@myself}>
-            Reset
-          </button>
+          <% end %>
+
+          <div class="flex justify-end">
+            <button
+              type="button"
+              disabled={@disabled}
+              class="danger-button m-2"
+              phx-click="reset-active-elements"
+              phx-target={@myself}
+            >
+              Reset
+            </button>
+          <div>
         </div>
-      </form>
+      <% else %>
+        <div class="flex items-center bg-secondary rounded-xl p-3 text-white font-semibold">
+          No path selected...
+        </div>
+      <% end %>
     </div>
     """
   end
 
   @impl true
-  def handle_event("change", _params, socket) do
-    # TODO: we may need to reassign the value here to socket (we probably don't have to...)
-    {:noreply, socket}
-  end
-
-  def handle_event("filter-active-elements", _params, socket) do
-    send_self(:apply_filter)
-
-    {:noreply, socket}
-  end
-
   def handle_event("reset-active-elements", _params, socket) do
     send_self(:reset)
 
     {:noreply, socket}
   end
-
-  @impl true
-  def handle_event("submit", %{"value" => value}, socket) do
-    idx = String.to_integer(value)
-
-    %State{active_elements: active_elements, current_select_values: current_select_values} =
-      socket.assigns.state
-
-    selected_element = Enum.at(current_select_values, idx - 1)
-    active_elements = active_elements ++ [selected_element]
-    current_select_values = Map.keys(get_in(socket.assigns.elements_tree, active_elements))
-
-    send_self(%State{
-      active_elements: active_elements,
-      current_select_values: current_select_values
-    })
-
-    {:noreply, socket}
-  end
-
-  def handle_event("submit", _params, socket), do: {:noreply, socket}
 
   defp send_self(message) do
     send(self(), {:elements_select, message})
