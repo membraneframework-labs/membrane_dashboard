@@ -22,16 +22,18 @@ defmodule Membrane.Dashboard.PipelineMarking do
     elements =
       from(el in "elements",
         where: ilike(el.path, ^search_string),
-        select: el.path
+        group_by: el.path,
+        select: {count(el.time), el.path}
       )
       |> Repo.all()
-      |> Enum.map(
-        &%{
+      |> Enum.filter(fn {n, _path} -> n < 2 end)
+      |> Enum.map(fn {_n, path} ->
+        %{
           time: NaiveDateTime.utc_now(),
-          path: &1,
+          path: path,
           terminated: true
         }
-      )
+      end)
 
     Repo.insert_all("elements", elements)
   end
