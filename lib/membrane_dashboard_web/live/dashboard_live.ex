@@ -107,21 +107,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
-  ###########################
-  ### FUNCTION COMPONENTS ###
-  ###########################
-
-  def remix_icon(assigns) do
-    assigns =
-      assigns
-      |> assign_new(:class, fn -> "" end)
-      |> assign(:attrs, assigns_to_attributes(assigns, [:icon, :class]))
-
-    ~H"""
-    <i class={"ri-#{@icon} #{@class}"} aria-hidden="true" {@attrs}></i>
-    """
-  end
-
   # inits, realoads or updates charts and reloads dagre
   @impl true
   def handle_info({:charts_init, data}, socket) do

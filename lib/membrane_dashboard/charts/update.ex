@@ -60,10 +60,8 @@ defmodule Membrane.Dashboard.Charts.Update do
 
     update_from = last_time_to + accuracy
 
-    case create_sql_query(accuracy, update_from, time_to) |> Repo.query() do
-      {:ok, %Postgrex.Result{rows: rows}} ->
-        rows_by_metrics = group_rows_by_metrics(rows)
-
+    case query_measurements(accuracy, update_from, time_to)do
+      {:ok, rows_by_metrics} ->
         params = %{
           accuracy: accuracy,
           time_from: time_from,
@@ -83,7 +81,7 @@ defmodule Membrane.Dashboard.Charts.Update do
         |> unzip3()
         |> then(&{:ok, &1})
 
-      {:error, _reason} ->
+      :error ->
         {:error, "Cannot fetch update data for charts"}
     end
   end

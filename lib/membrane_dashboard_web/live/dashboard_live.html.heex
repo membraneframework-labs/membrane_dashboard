@@ -67,7 +67,7 @@
             </div>
           <% end %>
 
-          <div id="search-button" class="flex ">
+          <div id="search-button" class="flex">
             <button 
               name="button" 
               type="submit" 
@@ -110,76 +110,78 @@
         </div>
       </form>
     </div>
-
-    
   </div>
   
   <%# Spacer for the navbar %>
-  <div class="mt-24">
+  <div class="mt-24" />
 
+  <div id="pipelines-diagram" class="m-4">
+    <h2 class="header">Pipeline diagrams</h2>
+    <p class="description mb-4">(Hold 'Alt' key for focus mode)</p>
+    <div id="dagre-diagram" class="dagre flex flex-col justify-center items-center bg-secondary rounded-xl overflow-hidden pd-1">
+      <div id="dagre-container" class="flex-grow w-full" phx-hook="Dagre" phx-update="ignore"> </div>
+      <div id="dagre-controls" class="flex text-white p-4">
+        <%# TODO add explanation for snapshot mode %>
+        <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
+          Snapshot mode: OFF
+        </button>
+        <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
+          <.fullscreen_exit_icon class="mr-2" />
+          Fit view
+        </button>
+        <button data-id="dagre-relayout" class="default-button mr-3">
+          <.layout_icon class="mr-1" />
+          Relayout
+        </button>
+        <button data-id="dagre-export-image" class="default-button mr-3">
+          <.image_icon class="mr-1" />
+          Export
+        </button>
 
-    <div id="pipelines-diagram" class="m-4">
-      <h2 class="header">Pipeline diagrams</h2>
-      <p class="description mb-4">(Hold 'Alt' key for focus mode)</p>
-      <div id="dagre-diagram" class="dagre flex flex-col justify-center items-center bg-secondary rounded-xl overflow-hidden pd-1">
-        <div id="dagre-container" class="flex-grow w-full" phx-hook="Dagre" phx-update="ignore"> </div>
-        <div id="dagre-controls" class="flex text-white p-4">
-          <%# TODO add explanation for snapshot mode %>
-          <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
-            Snapshot mode: OFF
-          </button>
-          <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
-            <.fullscreen_exit_icon class="mr-2" />
-            Fit view
-          </button>
-          <button data-id="dagre-relayout" class="default-button mr-3">
-            <.layout_icon class="mr-1" />
-            Relayout
-          </button>
-          <button data-id="dagre-export-image" class="default-button mr-3">
-            <.image_icon class="mr-1" />
-            Export
-          </button>
-
-          <div id="top-level-combos">
-            <%= if length(@top_level_combos || []) > 0 do %>
-              <div x-data="{ open: false }" class="relative mr-3">
-                <button 
-                  @click="open = !open" 
-                  @keydown.scape="open = false"
-                  class="default-button"
-                >
-                  <.focus_icon class="mr-1" />
-                  Focus pipeline
-                </button>
-                <div x-show="open" @click.away="open = false" class="dropdown-container w-64 bottom-2">
-                  <%= for combo <- @top_level_combos do %>
-                    <div 
-                      @click="open = false" 
-                      phx-click={"dagre:focus:combo:#{combo["id"]}"}
-                      class="dropdown-option"
-                    >
-                      <%= combo["label"] %>
-                    </div>
-                  <% end %>
-                </div>
+        <div id="top-level-combos">
+          <%= if length(@top_level_combos || []) > 0 do %>
+            <div x-data="{ open: false }" class="relative mr-3">
+              <button 
+                @click="open = !open" 
+                @keydown.scape="open = false"
+                class="default-button"
+              >
+                <.focus_icon class="mr-1" />
+                Focus pipeline
+              </button>
+              <div x-show="open" @click.away="open = false" class="dropdown-container w-64 bottom-2">
+                <%= for combo <- @top_level_combos do %>
+                  <div 
+                    @click="open = false" 
+                    phx-click={"dagre:focus:combo:#{combo["id"]}"}
+                    class="dropdown-option"
+                  >
+                    <%= combo["label"] %>
+                  </div>
+                <% end %>
               </div>
-            <% end %>
-          </div>
-
-          <button data-id="dagre-clear" phx-update="ignore" class="danger-button mr-3">Clear</button>
+            </div>
+          <% end %>
         </div>
+
+        <button data-id="dagre-clear" phx-update="ignore" class="danger-button mr-3">Clear</button>
       </div>
     </div>
+  </div>
 
-    <%= if length(@alive_pipelines) > 0 do %>
-      <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
-    <% end %>
+  <%= if length(@alive_pipelines) > 0 do %>
+    <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
+  <% end %>
 
-    <div id="charts" class="m-4">
-      <h2 class="header mb-4">Charts</h2>
-      <.live_component module={Membrane.DashboardWeb.Live.Components.ElementsSelect} id="elements-select" elements_tree={@elements_tree} state={@elements_select_state} disabled={@data_loading} />
-      <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
-    </div>
+  <div id="charts" class="m-4">
+    <h2 class="header mb-4">Charts</h2>
+    <.live_component 
+      id="elements-select" 
+      module={Membrane.DashboardWeb.Live.Components.ElementsSelect} 
+      elements_tree={@elements_tree} 
+      state={@elements_select_state} 
+      disabled={@data_loading} 
+    />
+    <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
   </div>
 </div>

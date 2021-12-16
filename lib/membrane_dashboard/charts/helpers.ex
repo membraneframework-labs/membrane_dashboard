@@ -3,7 +3,11 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Module has functions useful for Membrane.Dashboard.Charts.Full and Membrane.Dashboard.Charts.Update.
   """
 
+  alias Membrane.Dashboard.Repo
+
   import Membrane.Dashboard.Helpers
+  import Ecto.Query, only: [from: 2]
+
   require Logger
 
   @type rows_t :: [[term()]]
@@ -11,23 +15,47 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @type series_t :: [{{path :: String.t(), data :: list(integer())}, accumulator :: any()}]
 
   @doc """
-  Returns query to select all measurements from database for given accuracy and time range (both in milliseconds).
+  Queries all measurements for given time range and returns them grouped by their metrics types.
   """
-  @spec create_sql_query(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: String.t()
-  def create_sql_query(accuracy, time_from, time_to) do
+  @spec query_measurements(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, %{String.t() => rows_t()}} | :error
+  def query_measurements(accuracy, time_from, time_to) do
+
+
+    with {:ok, %Postgrex.Result{rows: measurements_rows}} <- Repo.query(measurements_query(accuracy, time_from, time_to)),
+      component_path_rows <- Repo.all(component_paths_query(measurements_rows))  do
+        component_paths = Map.new(component_path_rows)
+
+        {:ok, group_rows_by_metrics(measurements_rows, component_paths)}
+    else
+      error ->
+        Logger.error("Encountered error while querying database for charts data: #{inspect error}")
+
+        :error
+    end
+  end
+
+  defp measurements_query(accuracy, time_from, time_to) do
     accuracy_in_seconds = to_seconds(accuracy)
 
     """
-      SELECT floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
+      SELECT
+      floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
+      component_path_id,
       metric,
-      path,
       value
-      FROM measurements m JOIN component_paths ep on m.component_path_id = ep.id
-      WHERE
-      time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}'
-      GROUP BY time, metric, path, value
-      ORDER BY time
+      FROM measurements
+      WHERE time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}'
+      ORDER BY time;
     """
+  end
+
+  defp component_paths_query(measurements_rows) do
+    ids =
+      measurements_rows
+      |> Enum.map(fn [_time, path_id | _] -> path_id end)
+      |> Enum.uniq()
+
+    from(cp in "component_paths", where: cp.id in ^ids, select: {cp.id, cp.path})
   end
 
   @doc """
@@ -40,14 +68,14 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @doc """
   Given rows from the result of `Postgrex.Result` structure, returns map: `%{metric => rows}`.
   """
-  @spec group_rows_by_metrics(rows_t()) :: %{
+  @spec group_rows_by_metrics(rows_t(), map()) :: %{
           String.t() => rows_t()
         }
-  def group_rows_by_metrics(rows) do
+  def group_rows_by_metrics(rows, paths) do
     Enum.group_by(
       rows,
-      fn [_time, metric, _path, _value] -> metric end,
-      fn [time, _metric, path, value] -> [time, path, value] end
+      fn [_time, _path_id, metric, _value] -> metric end,
+      fn [time, path_id, _metric, value] -> [time, Map.fetch!(paths, path_id), value] end
     )
   end
 
