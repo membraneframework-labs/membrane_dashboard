@@ -36,7 +36,6 @@ defmodule Membrane.Dashboard.Charts.Update do
 
   import Membrane.Dashboard.Charts.Helpers
 
-  alias Membrane.Dashboard.Repo
   alias Membrane.Dashboard.Charts
   alias Membrane.Dashboard.Charts.Context
 

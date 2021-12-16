@@ -89,7 +89,7 @@
               type="button"
               @click="open = !open" 
               @keydown.escape="open = false"
-              class="default-button h-full"
+              class="default-button h-full mr-2"
             >
               <.clock_icon />
             </button>
@@ -108,6 +108,10 @@
             </div>
           </div>
         </div>
+        <button x-on:click="window.open('/dashboard')" type="button" class="flex justify-center items-center text-white font-bold bg-orange-500 hover:bg-orange-700 rounded-md p-1" phx-update="ignore">
+          <.phoenix_icon class="text-white h-7 w-7 mr-1" />
+          Phoenix Dashboard
+        </button>
       </form>
     </div>
   </div>
