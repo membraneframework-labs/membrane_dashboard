@@ -7,7 +7,7 @@ module.exports = {
       "../lib/*_web/**/*.*heex",
       "../lib/*_web/**/*.*html",
     ],
-    safelist: ["u-title", "u-label", "u-value"],
+    safelist: ["u-title", "u-label", "u-value", "u-off"],
   },
   theme: {
     extend: {

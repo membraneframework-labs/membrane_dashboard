@@ -59,7 +59,7 @@ defmodule Membrane.Dashboard.Charts.Update do
 
     update_from = last_time_to + accuracy
 
-    case query_measurements(accuracy, update_from, time_to)do
+    case query_measurements(accuracy, update_from, time_to) do
       {:ok, rows_by_metrics} ->
         params = %{
           accuracy: accuracy,

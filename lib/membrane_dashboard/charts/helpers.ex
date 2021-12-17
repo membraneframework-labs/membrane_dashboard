@@ -17,18 +17,20 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @doc """
   Queries all measurements for given time range and returns them grouped by their metrics types.
   """
-  @spec query_measurements(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, %{String.t() => rows_t()}} | :error
+  @spec query_measurements(non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, %{String.t() => rows_t()}} | :error
   def query_measurements(accuracy, time_from, time_to) do
+    with {:ok, %Postgrex.Result{rows: measurements_rows}} <-
+           Repo.query(measurements_query(accuracy, time_from, time_to)),
+         component_path_rows <- Repo.all(component_paths_query(measurements_rows)) do
+      component_paths = Map.new(component_path_rows)
 
-
-    with {:ok, %Postgrex.Result{rows: measurements_rows}} <- Repo.query(measurements_query(accuracy, time_from, time_to)),
-      component_path_rows <- Repo.all(component_paths_query(measurements_rows))  do
-        component_paths = Map.new(component_path_rows)
-
-        {:ok, group_rows_by_metrics(measurements_rows, component_paths)}
+      {:ok, group_rows_by_metrics(measurements_rows, component_paths)}
     else
       error ->
-        Logger.error("Encountered error while querying database for charts data: #{inspect error}")
+        Logger.error(
+          "Encountered error while querying database for charts data: #{inspect(error)}"
+        )
 
         :error
     end

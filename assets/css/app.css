@@ -68,6 +68,10 @@
   .u-value {
     @apply text-white font-semibold;
   }
+
+  .u-off {
+    display: none;
+  }
 }
 
 input:checked ~ .switch-dot {

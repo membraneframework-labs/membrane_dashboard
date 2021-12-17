@@ -69,6 +69,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       with true <- connected?(socket),
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
         socket
+        # check if this is correct
         |> schedule_query(from, to, mode: :update)
         |> noreply()
       else
@@ -89,7 +90,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update_range <- extract_update_time_range(params, socket) do
       socket
       |> schedule_query(from, to,
-        mode: if(update, do: :update, else: :full),
+        mode: if(socket.assigns.update and update, do: :update, else: :full),
         accuracy: accuracy,
         metrics: @metrics
       )

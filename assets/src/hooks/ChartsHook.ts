@@ -77,6 +77,14 @@ const ChartsHook = {
           this.charts[i].addSeries(series);
         }
 
+        // given series is empty therefore hide the charts
+        const chartElement = document.getElementById(this.charts[i].root.id);
+        if (chartsData[i].series.length < 2) {
+          chartElement!.style.display = "none";
+        } else {
+          chartElement!.style.display = "block";
+        }
+
         this.charts[i].setData(chartsData[i].data);
       }
     });
@@ -96,6 +104,14 @@ const ChartsHook = {
           };
           this.charts[i].addSeries(series);
         }
+        // given series is empty therefore hide the charts
+        const chartElement = document.getElementById(this.charts[i].root.id);
+        if (chartsData[i].series.length < 2) {
+          chartElement!.style.display = "none";
+        } else {
+          chartElement!.style.display = "block";
+        }
+
         this.charts[i].setData(chartsData[i].data);
       }
     });
