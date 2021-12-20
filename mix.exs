@@ -17,7 +17,7 @@ defmodule Membrane.Dashboard.MixProject do
   def application do
     [
       mod: {Membrane.Dashboard.Application, []},
-      extra_applications: [:crypto, :logger, :runtime_tools]
+      extra_applications: [:crypto, :logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -27,7 +27,7 @@ defmodule Membrane.Dashboard.MixProject do
   defp deps do
     [
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
-      {:dialyxir, "~> 1.0.0", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:phoenix, "~> 1.6.2"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.4"},
@@ -36,12 +36,13 @@ defmodule Membrane.Dashboard.MixProject do
       {:floki, ">= 0.27.0", only: :test},
       {:phoenix_html, "~> 3.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_dashboard, "~> 0.5"},
+      {:phoenix_live_dashboard, "~> 0.6"},
       {:telemetry_metrics, "~> 0.4"},
-      {:telemetry_poller, "~> 0.4"},
+      {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
-      {:credo, "~> 1.5", only: :dev}
+      {:credo, "~> 1.5", only: :dev},
+      {:esbuild, "~> 0.1", runtime: Mix.env() == :dev}
     ]
   end
 

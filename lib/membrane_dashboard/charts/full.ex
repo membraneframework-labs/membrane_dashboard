@@ -11,7 +11,6 @@ defmodule Membrane.Dashboard.Charts.Full do
 
   import Membrane.Dashboard.Charts.Helpers
 
-  alias Membrane.Dashboard.Repo
   alias Membrane.Dashboard.Charts
   alias Membrane.Dashboard.Charts.Context
 
@@ -25,10 +24,8 @@ defmodule Membrane.Dashboard.Charts.Full do
   @spec query(Context.t()) ::
           Charts.chart_query_result_t()
   def query(%Context{time_from: time_from, time_to: time_to, accuracy: accuracy, metrics: metrics}) do
-    case create_sql_query(accuracy, time_from, time_to) |> Repo.query() do
-      {:ok, %Postgrex.Result{rows: rows}} ->
-        rows_by_metrics = group_rows_by_metrics(rows)
-
+    case query_measurements(accuracy, time_from, time_to) do
+      {:ok, rows_by_metrics} ->
         metrics
         |> Enum.map(
           &prepare_chart(&1, Map.get(rows_by_metrics, &1, []), time_from, time_to, accuracy)
@@ -38,7 +35,7 @@ defmodule Membrane.Dashboard.Charts.Full do
 
       _error ->
         metrics
-        |> Enum.map(fn _metric -> {%{series: [], data: [[]]}, [], []} end)
+        |> Enum.map(fn _metric -> {:ok, {%{series: [], data: [[]]}, [], []}} end)
         |> unzip3()
     end
   end

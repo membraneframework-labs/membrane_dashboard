@@ -71,11 +71,11 @@ const DagreHook = {
       if (this.isAltDown && this.isMouseOverDiagram) {
         document
           .getElementById("dagre-diagram")!
-          .classList.add("Dagre-focusMode");
+          .classList.add("dagre-focus-mode");
       } else {
         document
           .getElementById("dagre-diagram")!
-          .classList.remove("Dagre-focusMode");
+          .classList.remove("dagre-focus-mode");
       }
     };
 
@@ -119,8 +119,8 @@ const DagreHook = {
 
     maybeAddEventListener(this.controls, "click", "dagre-mode", () => {
       const [newMode, innerText] = this.isInPreviewMode()
-        ? ["snapshot", "Exit snapshot mode"]
-        : ["preview", "Snapshot mode"];
+        ? ["snapshot", "Snapshot mode: ON"]
+        : ["preview", "Snapshot mode: OFF"];
 
       this.graph.setMode(newMode);
 
@@ -197,14 +197,14 @@ const DagreHook = {
 };
 
 // some node names can get really long even though they can come with line breaks
-// allow for up to 60 character lines and show `...` if the line exceeds the limit
+// allow for up to 55 (arbitrary) character lines and show `...` if the line exceeds the limit
 function reformatNodeNames(data: GraphData) {
   const nodes = (data.nodes ?? []).map((node) => {
     const label: string = (node.label as string) || "";
 
     const newLabel = label
       .split("\n")
-      .map((part) => (part.length < 60 ? part : part.slice(0, 60) + "..."))
+      .map((part) => (part.length < 55 ? part : part.slice(0, 55) + "..."))
       .join("\n");
 
     return { ...node, label: newLabel };

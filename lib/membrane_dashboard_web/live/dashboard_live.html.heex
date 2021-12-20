@@ -1,80 +1,175 @@
-<div style="height: 250%">
-  <h2>
-    Mode: <%= if @update, do: "Live update", else: "Dane range" %>
-  </h2>
-  <h3>Search in time range</h3>
-  <form phx-submit="search:refresh">
-    <div id="date-inputs">
-      <div>
-        <label>From</label>
-        <input type="text" value={format_time(@time_from)} name="timeFrom" phx-debounce="blur"/>
-      </div>
-      <div>
-        <label>To</label>
-        <input type="text" value={format_time(@time_to)} name="timeTo" phx-debounce="blur"/>
-      </div>
-      <div id="search-button">
-        <button name="button" type="submit">Search</button>
-        <%= if @data_loading do %>
-          <progress class="circular-progress-bar"/>
-        <% end %>
-      </div>
-    </div>
-    <div class="SearchButtons">
-      <button value="1" type="button" phx-click="search:last-x-min" disabled={@data_loading}>Last 1 min</button>
-      <button value="3" type="button" phx-click="search:last-x-min" disabled={@data_loading}>Last 3 min</button>
-      <button type="button" phx-click="search:toggle-update-mode" disabled={@data_loading}>
+<div>
+  <div id="navbar" class="fixed right-0 top-0 flex justify-end items-center w-full p-2 drop-shadow-md bg-secondary z-10">
+    <div class="relative w-40">
+      <div class="relative inline-flex">
+        <span class="text-white font-bold mr-2">Mode:</span>
         <%= if @update do %>
-          Stop live update
+            <span class="text-gray-300 font-semibold">live</span>
+            <span class="absolute h-2 w-2 top-0 right-0 -mt-px -mr-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="absolute inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+            </span>
+
         <% else %>
-          Start live update
+            <span class="text-gray-300 font-semibold">static</span>
         <% end %>
-      </button>
+        </div>
+
+       <label 
+          for="mode-toggle"
+          class="flex items-center cursor-pointer ml-2 absolute right-0 top-1"
+        >
+          <div class="relative">
+            <input id="mode-toggle" checked={@update} type="checkbox" class="sr-only" />
+            <div 
+              phx-click="search:toggle-update-mode"
+              class="w-10 h-4 bg-gray-400 rounded-full shadow-inner switch-line"></div>
+            <div 
+              phx-click="search:toggle-update-mode"
+              class="switch-dot absolute w-6 h-6 bg-white rounded-full shadow -left-1 -top-1 transition"
+            ></div>
+          </div>
+      </label>
     </div>
-  </form>
 
-  <form phx-submit="search:apply-accuracy">
-    <div class="AccuracyInput">
-      <label>Accuracy</label>
-      <h6>Be aware that the better accuracy, the longer rendering time.</h6>
-      
-      
-      <input id="accuracy" type="number" min="10" value={@accuracy} name="accuracy" phx-debounce="blur"/>
-      <div id="accuracy-unit" style="margin-right: 10px">ms</div>
-      <button name="button" type="submit">Apply</button>
-    </div>
-  </form>
-
-
-  <h2>Pipeline diagrams</h2>
-  <p>(Hold 'Alt' key for focus mode)</p>
-  <div id="dagre-diagram" class="Dagre">
-    <div id="dagre-container" class="placeholder" phx-hook="Dagre" phx-update="ignore"> </div>
-    <div id="dagre-controls">
-      <%# TODO add explanation for snapshot mode %>
-      <button data-id="dagre-mode" type="button" phx-update="ignore">Snapshot mode</button>
-      <button data-id="dagre-fit-view" type="button" phx-update="ignore">Fit view</button>
-      <button data-id="dagre-relayout">Relayout</button>
-      <button data-id="dagre-clear">Clear</button>
-      <button data-id="dagre-export-image">Export image</button>
-
-      <%= if length(@top_level_combos || []) > 0 do %>
-        <div x-data="{ isOpen: false }" class="DropdownCombos">
-          <button 
-            @click="isOpen = !isOpen" 
-            @keydown.scape="isOpen = false"
-          >
-            Focus pipeline
+    <div id="search-controls" class="flex flex-1 justify-end items-center">
+      <form phx-submit="search:apply-accuracy" >
+        <div class="flex flex-row justify-center items-center mr-3">
+          <label class="text-white font-semibold mr-2">Accuracy: </label>
+          <input 
+            id="accuracy" 
+            type="number" 
+            min="10" 
+            value={@accuracy} 
+            name="accuracy" 
+            phx-debounce="blur" 
+            class="default-input w-24 mr-2"
+          />
+          <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div>
+          <button name="button" type="submit" class="default-button h-8">
+            <.ruler_icon />
           </button>
-          <div x-show="isOpen" @click.away="isOpen = false" class="options">
-            <%= for combo <- @top_level_combos do %>
-              <div @click="isOpen = false" phx-click={"dagre:focus:combo:#{combo["id"]}"}>
-                <%= combo["label"] %>
-              </div>
-            <% end %>
+        </div>
+      </form>
+
+      <form phx-submit="search:refresh" class="flex items-center">
+        <div id="date-inputs" class="flex mr-2">
+          <%= for {label, name, time} <- [{"From:", "timeFrom", @time_from}, {"To:", "timeTo", @time_to}] do %>
+            <div class="mr-3 flex justify-center items-center">
+              <label class="text-white font-bold mr-2"><%= label %></label>
+              <input 
+                type="text" 
+                value={format_time(time)} 
+                name={name}
+                phx-debounce="blur"
+                class="default-input"
+              />
+            </div>
+          <% end %>
+
+          <div id="search-button" class="flex">
+            <button 
+              name="button" 
+              type="submit" 
+              disabled={@data_loading}
+              class="default-button" 
+              >
+              <%= if @data_loading do %>
+                <.circular_progress_icon class="mr-2" />
+              <% else %>
+                <.search_icon class="mr-2" />
+              <% end %>
+              Search
+            </button>
           </div>
         </div>
-      <% end %>
+        <div class="flex justify-center items-center h-full" phx-update="ignore">
+          <div x-data="{ open: false }" class="relative h-8">
+            <button 
+              type="button"
+              @click="open = !open" 
+              @keydown.escape="open = false"
+              class="default-button h-full mr-2"
+            >
+              <.clock_icon />
+            </button>
+            <div x-show="open" @click.away="open = false" class="dropdown-container">
+              <%= for {label, range} <- [{"Last minute", "1"}, {"Last 3 minutes", "3"}] do %>
+                <button 
+                  type="button"
+                  @click="open = false" 
+                  value={range} 
+                  phx-click="search:last-x-min"
+                  class="dropdown-option"
+                >
+                  <%= label %>
+                </button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <button x-on:click="window.open('/dashboard')" type="button" class="flex justify-center items-center text-white font-bold bg-orange-500 hover:bg-orange-700 rounded-md p-1" phx-update="ignore">
+          <.phoenix_icon class="text-white h-7 w-7 mr-1" />
+          Phoenix Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <%# Spacer for the navbar %>
+  <div class="mt-24" />
+
+  <div id="pipelines-diagram" class="m-4">
+    <h2 class="header">Pipeline diagrams</h2>
+    <p class="description mb-4">(Hold 'Alt' key for focus mode)</p>
+    <div id="dagre-diagram" class="dagre flex flex-col justify-center items-center bg-secondary rounded-xl overflow-hidden pd-1">
+      <div id="dagre-container" class="flex-grow w-full" phx-hook="Dagre" phx-update="ignore"> </div>
+      <div id="dagre-controls" class="flex text-white p-4">
+        <%# TODO add explanation for snapshot mode %>
+        <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
+          Snapshot mode: OFF
+        </button>
+        <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
+          <.fullscreen_exit_icon class="mr-2" />
+          Fit view
+        </button>
+        <button data-id="dagre-relayout" class="default-button mr-3">
+          <.layout_icon class="mr-1" />
+          Relayout
+        </button>
+        <button data-id="dagre-export-image" class="default-button mr-3">
+          <.image_icon class="mr-1" />
+          Export
+        </button>
+
+        <div id="top-level-combos">
+          <%= if length(@top_level_combos || []) > 0 do %>
+            <div x-data="{ open: false }" class="relative mr-3">
+              <button 
+                @click="open = !open" 
+                @keydown.scape="open = false"
+                class="default-button"
+              >
+                <.focus_icon class="mr-1" />
+                Focus pipeline
+              </button>
+              <div x-show="open" @click.away="open = false" class="dropdown-container w-64 bottom-2">
+                <%= for combo <- @top_level_combos do %>
+                  <div 
+                    @click="open = false" 
+                    phx-click={"dagre:focus:combo:#{combo["id"]}"}
+                    class="dropdown-option"
+                  >
+                    <%= combo["label"] %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <button data-id="dagre-clear" phx-update="ignore" class="danger-button mr-3">Clear</button>
+      </div>
     </div>
   </div>
 
@@ -82,10 +177,15 @@
     <.live_component module={Membrane.DashboardWeb.Live.Components.AlivePipelines} id="alive-pipelines", alive_pipelines={@alive_pipelines} />
   <% end %>
 
-  <h2>Charts</h2>
-  <h3>Elements path</h3>
-  <p>You may want to filter charts to a subset of elements or a single particular element, you can do so by selecting elements' path</p>
-  <.live_component module={Membrane.DashboardWeb.Live.Components.ElementsSelect} id="elements-select" elements_tree={@elements_tree} state={@elements_select_state} disabled={@data_loading} />
-  <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
-
+  <div id="charts" class="m-4">
+    <h2 class="header mb-4">Charts</h2>
+    <.live_component 
+      id="elements-select" 
+      module={Membrane.DashboardWeb.Live.Components.ElementsSelect} 
+      elements_tree={@elements_tree} 
+      state={@elements_select_state} 
+      disabled={@data_loading} 
+    />
+    <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
+  </div>
 </div>

@@ -8,6 +8,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
   alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
+  import Membrane.DashboardWeb.Live.Helpers
+
   require Logger
 
   @metrics ["caps", "event", "store", "take_and_demand", "buffer", "queue_len", "bitrate"]
@@ -67,6 +69,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       with true <- connected?(socket),
            {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
         socket
+        # check if this is correct
         |> schedule_query(from, to, mode: :update)
         |> noreply()
       else
@@ -86,7 +89,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
          update <- extract_update_status(params, socket),
          update_range <- extract_update_time_range(params, socket) do
       socket
-      |> schedule_query(from, to, mode: :full, accuracy: accuracy, metrics: @metrics)
+      |> schedule_query(from, to,
+        mode: if(socket.assigns.update and update, do: :update, else: :full),
+        accuracy: accuracy,
+        metrics: @metrics
+      )
       |> assign(
         accuracy: accuracy,
         update: update,
@@ -301,7 +308,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         push_patch_with_params(socket, %{
           from: now(-60 * minutes_as_int),
           to: now(),
-          update: true,
           update_range: 60 * minutes_as_int
         })
 

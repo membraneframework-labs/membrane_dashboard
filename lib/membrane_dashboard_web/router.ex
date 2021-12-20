@@ -1,6 +1,8 @@
 defmodule Membrane.DashboardWeb.Router do
   use Membrane.DashboardWeb, :router
 
+  import Phoenix.LiveDashboard.Router
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -14,5 +16,6 @@ defmodule Membrane.DashboardWeb.Router do
     pipe_through :browser
 
     live "/", DashboardLive
+    live_dashboard "/dashboard"
   end
 end

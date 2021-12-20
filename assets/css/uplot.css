@@ -14,12 +14,6 @@
   width: min-content;
 }
 
-.u-title {
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-}
-
 .u-wrap {
   position: relative;
   user-select: none;
@@ -47,7 +41,7 @@
   height: 160px;
   margin: auto;
   overflow: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   padding: 10px;
 }
 

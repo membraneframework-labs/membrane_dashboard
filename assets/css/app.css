@@ -1,0 +1,83 @@
+@import "./uplot.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .base-button {
+    @apply flex justify-center items-center rounded-md text-white font-semibold px-2 py-1;
+  }
+  .default-button {
+    @apply base-button bg-indigo-700 hover:bg-indigo-800 disabled:bg-indigo-900 disabled:text-gray-200;
+  }
+
+  .danger-button {
+    @apply base-button bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:text-gray-200;
+  }
+
+  .default-icon {
+    @apply h-5 w-5 text-white;
+  }
+
+  .header {
+    @apply text-4xl text-white font-bold;
+  }
+
+  .subheader {
+    @apply text-2xl text-white font-semibold;
+  }
+
+  .description {
+    @apply text-lg text-white;
+  }
+
+  .dagre {
+    height: 600px;
+  }
+
+  .dagre-focus-mode {
+    @apply border border-2 border-red-500 border-dashed;
+  }
+
+  .dropdown-container {
+    @apply absolute overflow-hidden rounded-md bg-secondary w-40 my-2 right-1  border border-gray-300/25;
+  }
+
+  .dropdown-option {
+    @apply text-white font-semibold p-4 w-full cursor-pointer hover:bg-primary;
+  }
+
+  .default-input {
+    @apply bg-white text-black font-medium px-2 py-1 rounded-md outline-zinc-600;
+  }
+
+  .custom-uplot-chart {
+    @apply rounded-xl bg-secondary my-3 mb-3 overflow-hidden;
+  }
+
+  /* UPlot custom styles */
+  .u-title {
+    @apply flex justify-center items-center text-white font-bold text-lg p-2;
+  }
+
+  .u-label {
+    @apply text-white font-normal;
+  }
+
+  .u-value {
+    @apply text-white font-semibold;
+  }
+
+  .u-off {
+    display: none;
+  }
+}
+
+input:checked ~ .switch-dot {
+  transform: translateX(100%);
+}
+
+input:checked ~ .switch-line {
+  @apply bg-indigo-700;
+}
