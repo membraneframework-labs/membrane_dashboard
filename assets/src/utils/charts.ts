@@ -14,7 +14,7 @@ const metricToTitle: Record<string, string> = {
   bitrate: "Processed bytes per second (measured during buffer callback)",
 };
 
-export function createCharts(
+export function createChart(
   container: HTMLElement,
   width: number,
   metric: string

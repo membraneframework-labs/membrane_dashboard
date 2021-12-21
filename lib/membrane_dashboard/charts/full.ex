@@ -23,25 +23,21 @@ defmodule Membrane.Dashboard.Charts.Full do
   """
   @spec query(Context.t()) ::
           Charts.chart_query_result_t()
-  def query(%Context{time_from: time_from, time_to: time_to, accuracy: accuracy, metrics: metrics}) do
-    case query_measurements(accuracy, time_from, time_to) do
-      {:ok, rows_by_metrics} ->
-        metrics
-        |> Enum.map(
-          &prepare_chart(&1, Map.get(rows_by_metrics, &1, []), time_from, time_to, accuracy)
-        )
-        |> unzip3()
+  def query(%Context{time_from: time_from, time_to: time_to, metric: metric, accuracy: accuracy}) do
+    case query_measurements(time_from, time_to, metric, accuracy) do
+      {:ok, rows, paths_mapping} ->
+        rows
+        |> prepare_chart(time_from, time_to, metric, accuracy, paths_mapping)
         |> then(&{:ok, &1})
 
       _error ->
-        metrics
-        |> Enum.map(fn _metric -> {:ok, {%{series: [], data: [[]]}, [], []}} end)
-        |> unzip3()
+        chart = %{series: [], data: [[]]}
+        {:ok, {chart, _paths_mapping = %{}, _accumulators = %{}}}
     end
   end
 
   # prepares a single chart based on raw data from TimescaleDB
-  defp prepare_chart(metric, rows, time_from, time_to, accuracy) do
+  defp prepare_chart(rows, time_from, time_to, metric, accuracy, paths_mapping) do
     interval = timeline_interval(time_from, time_to, accuracy)
 
     {path_to_data, accumulators} =
@@ -52,7 +48,12 @@ defmodule Membrane.Dashboard.Charts.Full do
       end
       |> Enum.unzip()
 
-    {paths, data} = Enum.unzip(path_to_data)
+    {paths_ids, data} =
+      path_to_data
+      |> Enum.sort_by(fn {path_id, _data} -> path_id end)
+      |> Enum.unzip()
+
+    paths = Enum.map(paths_ids, &Map.fetch!(paths_mapping, &1))
 
     chart_data = %{
       series: series_from_paths(paths),
@@ -64,7 +65,7 @@ defmodule Membrane.Dashboard.Charts.Full do
       |> Enum.zip(accumulators)
       |> Map.new()
 
-    {chart_data, paths, mapped_accumulators}
+    {chart_data, paths_mapping, mapped_accumulators}
   end
 
   defp series_from_paths(paths) do

@@ -1,6 +1,11 @@
 defmodule Membrane.DashboardWeb.Live.Helpers do
+  @moduledoc """
+  Modules consisting different svg icons.
+  """
+
   use Phoenix.Component
 
+  @spec search_icon(map) :: Phoenix.LiveView.Rendered.t()
   def search_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -11,6 +16,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec circular_progress_icon(map) :: Phoenix.LiveView.Rendered.t()
   def circular_progress_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -22,6 +28,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec clock_icon(map) :: Phoenix.LiveView.Rendered.t()
   def clock_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -32,6 +39,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec image_icon(map) :: Phoenix.LiveView.Rendered.t()
   def image_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -42,6 +50,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec layout_icon(map) :: Phoenix.LiveView.Rendered.t()
   def layout_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -52,6 +61,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec fullscreen_exit_icon(map) :: Phoenix.LiveView.Rendered.t()
   def fullscreen_exit_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -62,6 +72,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec focus_icon(map) :: Phoenix.LiveView.Rendered.t()
   def focus_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -72,6 +83,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec ruler_icon(map) :: Phoenix.LiveView.Rendered.t()
   def ruler_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -82,6 +94,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec arrow_down_icon(map) :: Phoenix.LiveView.Rendered.t()
   def arrow_down_icon(assigns) do
     assigns = assign_class(assigns)
 
@@ -92,6 +105,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec phoenix_icon(map) :: Phoenix.LiveView.Rendered.t()
   def phoenix_icon(assigns) do
     assigns = assign_class(assigns)
 

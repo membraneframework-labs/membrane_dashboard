@@ -1,16 +1,12 @@
 import uPlot, { AlignedData, Series } from "uplot";
 
 import { ViewHookInterface } from "phoenix_live_view";
-import { createCharts } from "../utils/charts";
+import { createChart } from "../utils/charts";
 
 type Hook = ViewHookInterface & {
-  charts: uPlot[];
+  charts: Record<string, uPlot>;
   data: AlignedData[];
 };
-
-interface InitData {
-  data: string[];
-}
 
 interface ChartData {
   series: Series[];
@@ -18,114 +14,132 @@ interface ChartData {
 }
 
 interface RefreshData {
-  data: ChartData[];
+  metric: string;
+  data: ChartData;
 }
 
 const ChartsHook = {
   destroyed(this: Hook) {
-    this.charts.forEach((chart) => chart.destroy());
+    Object.values(this.charts).forEach((chart) => chart.destroy());
+    this.charts = {};
+  },
+  disconnected(this: Hook) {
+    Object.values(this.charts).forEach((chart) => chart.destroy());
+    this.charts = {};
   },
   mounted(this: Hook) {
-    this.charts = [];
+    this.charts = {};
 
     window.addEventListener("resize", () => {
       const size = getSize();
-      this.charts.forEach((chart) => {
+      Object.values(this.charts).forEach((chart) => {
         chart.setSize({ ...size, height: chart.height });
       });
     });
 
-    // creating empty charts with proper names and sizes
-    this.handleEvent("charts:init", (payload) => {
-      // destroy charts if they already exist, may happen on liveview reconnect
-      this.charts.forEach((chart) => chart.destroy());
-
-      this.charts = [];
-      const width = this.el.scrollWidth - 20;
-      const metrics = (payload as InitData).data;
-      for (const metric of metrics) {
-        const chart = createCharts(this.el, width, metric);
-        this.charts.push(chart);
-      }
-    });
-
     // full charts update
-    this.handleEvent("charts:data", (payload) => {
-      const chartsData = (payload as RefreshData).data;
+    this.handleEvent("charts:full", (payload) => {
+      const { metric, data: chartData } = payload as RefreshData;
 
-      for (let i = 0; i < chartsData.length; i++) {
-        // new series can be different from old ones, so all old series should be deleted
-        for (let j = this.charts[i].series.length - 1; j >= 0; j--) {
-          this.charts[i].delSeries(j);
-        }
-
-        // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
-        // is multiplied by 1000
-        const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}");
-        chartsData[i].series[0].value = (_, rawValue) => {
-          return formatter(new Date(rawValue * 1000));
-        };
-
-        // configures series and adds them to the chart
-        for (const series of chartsData[i].series) {
-          const color = randomColor();
-          series.stroke = color;
-          series.spanGaps = true;
-          series.points = {
-            width: 1 / window.devicePixelRatio,
-          };
-          this.charts[i].addSeries(series);
-        }
-
-        // given series is empty therefore hide the charts
-        const chartElement = document.getElementById(this.charts[i].root.id);
-        if (chartsData[i].series.length < 2) {
-          chartElement!.style.display = "none";
-        } else {
-          chartElement!.style.display = "block";
-        }
-
-        this.charts[i].setData(chartsData[i].data);
+      let chart;
+      if (!(metric in this.charts)) {
+        chart = this.charts[metric] = createChart(
+          this.el,
+          this.el.scrollWidth - 20,
+          metric
+        );
+      } else {
+        chart = this.charts[metric];
       }
+
+      for (let i = chart.series.length - 1; i >= 0; i--) {
+        chart.delSeries(i);
+      }
+
+      // new series can be different from old ones, so all old series should be deleted
+
+      // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
+      // is multiplied by 1000
+      const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}");
+      chartData.series[0].value = (_, rawValue) => {
+        return formatter(new Date(rawValue * 1000));
+      };
+
+      // configures series and adds them to the chart
+      for (const series of chartData.series) {
+        const color = randomColor();
+        series.stroke = color;
+        series.spanGaps = true;
+        series.points = {
+          width: 1 / window.devicePixelRatio,
+        };
+        chart.addSeries(series);
+      }
+
+      // given series is empty therefore hide the charts
+      const chartElement = document.getElementById(chart.root.id);
+      if (chart.series.length < 2) {
+        chartElement!.style.display = "none";
+      } else {
+        chartElement!.style.display = "block";
+      }
+
+      chart.setData(chartData.data);
     });
 
     // live update patch
     this.handleEvent("charts:update", (payload) => {
-      const chartsData = (payload as RefreshData).data;
+      const { metric, data: chartData } = payload as RefreshData;
 
-      for (let i = 0; i < chartsData.length; i++) {
-        // configures new series and adds them to the chart
-        for (const series of chartsData[i].series) {
-          const color = randomColor();
-          series.stroke = color;
-          series.spanGaps = true;
-          series.points = {
-            width: 1 / window.devicePixelRatio,
-          };
-          this.charts[i].addSeries(series);
-        }
-        // given series is empty therefore hide the charts
-        const chartElement = document.getElementById(this.charts[i].root.id);
-        if (chartsData[i].series.length < 2) {
-          chartElement!.style.display = "none";
-        } else {
-          chartElement!.style.display = "block";
-        }
+      const chart = this.charts[metric];
+      console.assert(
+        !!chart,
+        "Chart should be present during update but is not..."
+      );
 
-        this.charts[i].setData(chartsData[i].data);
+      for (let i = chart.series.length; i < chartData.series.length; i++) {
+        const series = chartData.series[i];
+        const color = randomColor();
+        series.stroke = color;
+        series.spanGaps = true;
+        series.points = {
+          width: 1 / window.devicePixelRatio,
+        };
+        chart.addSeries(series);
       }
+
+      // given series is empty therefore hide the charts
+      const chartElement = document.getElementById(chart.root.id);
+      if (chart.series.length < 2) {
+        chartElement!.style.display = "none";
+      } else {
+        chartElement!.style.display = "block";
+      }
+
+      chart.setData(chartData.data);
     });
 
     this.handleEvent("charts:filter", (payload) => {
       const { seriesPrefix } = payload as { seriesPrefix: string };
 
-      this.charts.forEach((chart) => {
+      Object.values(this.charts).forEach((chart) => {
         chart.series.forEach((series, idx) => {
           const show =
             series?.label === "time" || series.label?.startsWith(seriesPrefix);
           chart.setSeries(idx, { show });
         });
       });
+    });
+
+    this.handleEvent("charts:metrics:selected", (payload) => {
+      const { metrics } = payload as { metrics: string[] };
+
+      for (const metricName in this.charts) {
+        if (!metrics.includes(metricName)) {
+          this.charts[metricName].destroy();
+          delete this.charts[metricName];
+        }
+      }
     });
   },
 };

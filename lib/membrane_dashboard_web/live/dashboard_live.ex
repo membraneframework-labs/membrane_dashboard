@@ -4,11 +4,12 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   """
   use Membrane.DashboardWeb, :live_view
 
+  import Membrane.DashboardWeb.Live.Helpers
+
   alias Membrane.Dashboard.{DataManager, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
   alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
-  import Membrane.DashboardWeb.Live.Helpers
 
   require Logger
 
@@ -25,10 +26,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   # - charts are created based on current metrics in database
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      send(self(), {:charts_init, @metrics})
-    end
-
     socket =
       socket
       |> assign(
@@ -39,7 +36,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         update_range: @initial_time_offset,
 
         # cached query data
-        metrics: @metrics,
+        available_metrics: @metrics,
+        metrics: [],
         data_manager: nil,
 
         # real-time update timer
@@ -61,23 +59,25 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   @impl true
   def handle_params(%{"mode" => "update", "from" => from, "to" => to}, _session, socket) do
     # if we are in update mode and there is no data then just push patch that will do the full query
-    if DataManager.loaded?(socket.assigns.data_manager |> elem(1)) do
+    with {_ref, data_manager} <- socket.assigns.data_manager,
+         true <- DataManager.loaded?(data_manager) do
       socket
       |> push_patch_with_params(%{from: from, to: to})
       |> noreply()
     else
-      with true <- connected?(socket),
-           {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
-        socket
-        # check if this is correct
-        |> schedule_query(from, to, mode: :update)
-        |> noreply()
-      else
-        _unmatched ->
+      _unmatched ->
+        with true <- connected?(socket),
+             {from, to} <- extract_time_range(%{"from" => from, "to" => to}, socket) do
           socket
-          |> plan_update()
+          # check if this is correct
+          |> schedule_query(from, to, mode: :update)
           |> noreply()
-      end
+        else
+          _unmatched ->
+            socket
+            |> plan_update()
+            |> noreply()
+        end
     end
   end
 
@@ -91,8 +91,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
       socket
       |> schedule_query(from, to,
         mode: if(socket.assigns.update and update, do: :update, else: :full),
-        accuracy: accuracy,
-        metrics: @metrics
+        accuracy: accuracy
       )
       |> assign(
         accuracy: accuracy,
@@ -108,18 +107,11 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     end
   end
 
-  # inits, realoads or updates charts and reloads dagre
-  @impl true
-  def handle_info({:charts_init, data}, socket) do
-    socket
-    |> push_event("charts:init", %{data: data})
-    |> noreply()
-  end
-
   ##################
   ### DATA QUERY ###
   ##################
 
+  @impl true
   def handle_info({:data_query, :query_start}, socket) do
     socket
     |> assign(data_loading: true)
@@ -133,7 +125,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_info({:data_query, :charts, {mode, charts, elements_tree}}, socket) do
+  def handle_info({:data_query, :elements_tree, elements_tree}, socket) do
     new_elements_select_state =
       Map.replace!(
         socket.assigns.elements_select_state,
@@ -141,15 +133,15 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         Map.keys(elements_tree)
       )
 
-    type =
-      case mode do
-        :full -> "data"
-        :update -> "update"
-      end
-
     socket
-    |> push_event("charts:" <> type, %{data: charts})
     |> assign(elements_tree: elements_tree, elements_select_state: new_elements_select_state)
+    |> noreply()
+  end
+
+  def handle_info({:data_query, :charts, {mode, metric, chart}}, socket)
+      when mode in [:full, :update] do
+    socket
+    |> push_event("charts:#{mode}", %{metric: metric, data: chart})
     |> noreply()
   end
 
@@ -192,9 +184,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  #######################
-  ### ELEMENTS SELECT ###
-  #######################
+  #########################
+  ### PIPELINES MARKING ###
+  #########################
 
   def handle_info({:alive_pipelines, {:mark_dead, pipeline}}, socket) do
     case Membrane.Dashboard.PipelineMarking.mark_dead(pipeline) do
@@ -207,6 +199,25 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         Logger.error("Tried to mark '#{pipeline}' as dead while not being alive...")
         socket
     end
+    |> noreply()
+  end
+
+  ######################
+  ### METRICS SELECT ###
+  ######################
+
+  def handle_info({:metrics_select, {type, metric}}, socket) do
+    socket =
+      case type do
+        :add ->
+          update(socket, :metrics, fn metrics -> metrics ++ [metric] end)
+
+        :remove ->
+          update(socket, :metrics, fn metrics -> Enum.reject(metrics, &(&1 == metric)) end)
+      end
+
+    socket
+    |> push_event("charts:metrics:selected", %{metrics: socket.assigns.metrics})
     |> noreply()
   end
 
@@ -372,10 +383,19 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   defp schedule_query(socket, time_from, time_to, options) do
     socket = start_data_manager(socket)
+    metrics = socket.assigns.metrics
+    accuracy = socket.assigns.accuracy
 
     {_ref, manager} = socket.assigns.data_manager
 
-    options = Keyword.merge(options, time_from: time_from, time_to: time_to)
+    options =
+      Keyword.merge(options,
+        time_from: time_from,
+        time_to: time_to,
+        metrics: metrics,
+        accuracy: accuracy
+      )
+
     DataManager.query(manager, options)
 
     socket

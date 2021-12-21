@@ -6,7 +6,6 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
 
   use Membrane.DashboardWeb, :live_component
 
-  alias Phoenix.LiveView.JS
   import Membrane.DashboardWeb.Live.Helpers, only: [arrow_down_icon: 1]
 
   defmodule State do

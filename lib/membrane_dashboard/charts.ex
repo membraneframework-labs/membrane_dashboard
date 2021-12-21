@@ -3,14 +3,29 @@ defmodule Membrane.Dashboard.Charts do
   Utility types for charts.
   """
 
+  @typedoc """
+  A type representing a single chart.
+
+  ## Note
+  The first series must be named `time` and the first row of data must
+  consist of timestamps instead of proper values.
+  """
   @type chart_data_t :: %{
           series: [%{label: String.t()}],
           data: [[integer()]]
-        }
-  @type chart_paths_t :: [String.t()]
+  }
+
+  @typedoc """
+  A mapping from a `path_id` to the actual path's string representation.
+  """
+  @type chart_paths_t :: %{non_neg_integer() => String.t()}
+
+  @typedoc """
+  A map pointing from a `path_id` to its corresponding chart accumulator.
+  """
   @type chart_accumulator_t :: map()
   @type chart_query_result_t ::
-          {:ok, {[chart_data_t()], [chart_paths_t()], [chart_accumulator_t()]}} | {:error, any()}
+          {:ok, {chart_data_t(), chart_paths_t(), chart_accumulator_t()}} | {:error, any()}
 
   @type metric_t :: :caps | :event | :store | :take_and_demand | :buffer | :queue_len | :bitrate
 
@@ -26,7 +41,7 @@ defmodule Membrane.Dashboard.Charts do
       have to provide value for each time interval, no matter if the measurement happened or not,
       the lower accuracy value the more precise the chart will be but it will be much more CPU, memory and time intensive
       to create such chart
-    * `metrics` - a list of metrics that should get queried, string versions of `t:Membrane.Dashboard.Charts.metric_t/0`.
+    * `metric` - a metric name that the query should be performed against
 
 
     Fields that are used and necessary just for UPDATE query:
@@ -43,14 +58,14 @@ defmodule Membrane.Dashboard.Charts do
             time_from: non_neg_integer(),
             time_to: non_neg_integer(),
             accuracy: non_neg_integer(),
-            metrics: [String.t()],
+            metric: String.t(),
             data: [Charts.chart_data_t()],
-            paths: [Charts.chart_paths_t()],
+            paths_mapping: %{non_neg_integer() => String.t()},
             accumulators: [Charts.chart_accumulator_t()],
             latest_time: non_neg_integer() | nil
           }
 
-    @enforce_keys [:time_from, :time_to, :accuracy, :metrics]
-    defstruct @enforce_keys ++ [data: [], paths: [], accumulators: [], latest_time: nil]
+    @enforce_keys [:time_from, :time_to, :accuracy, :metric]
+    defstruct @enforce_keys ++ [data: [], paths_mapping: %{}, accumulators: [], latest_time: nil]
   end
 end

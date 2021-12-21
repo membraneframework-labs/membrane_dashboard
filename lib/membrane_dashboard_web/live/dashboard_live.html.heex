@@ -186,6 +186,12 @@
       state={@elements_select_state} 
       disabled={@data_loading} 
     />
+    <.live_component 
+      id="metrics-select" 
+      module={Membrane.DashboardWeb.Live.Components.MetricsSelect} 
+      available_metrics={@available_metrics} 
+      metrics={@metrics} 
+    />
     <div id="charts-container" phx-hook="Charts" class="Charts" phx-update="ignore"></div>
   </div>
 </div>
