@@ -32,12 +32,12 @@ defmodule Membrane.Dashboard.DataManager do
 
   @impl true
   def init(_opts) do
-    {:ok, %{charts_context: nil, alive_pipelines: [], last_query: nil}}
+    {:ok, %{chart_contexts: %{}, alive_pipelines: [], last_query: nil}}
   end
 
   @impl true
   def handle_call(:loaded?, _from, state) do
-    {:reply, !is_nil(state.charts_context), state}
+    {:reply, state.chart_contexts != %{}, state}
   end
 
   @impl true
@@ -52,39 +52,49 @@ defmodule Membrane.Dashboard.DataManager do
 
     send_data(respond_to, :dagre, dagre)
 
-    metrics =
-      Keyword.get_lazy(
-        options,
-        :metrics,
-        fn -> state.charts_context[:metrics] || raise("missing 'metrics' parameter") end
-      )
+    accuracy = Keyword.fetch!(options, :accuracy)
+    metrics = Keyword.fetch!(options, :metrics)
 
-    accuracy =
-      Keyword.get_lazy(
-        options,
-        :accuracy,
-        fn -> state.charts_context[:accuracy] || raise("missing 'accuracy' parameter") end
-      )
+    {chart_contexts, all_paths} =
+      Enum.reduce(metrics, {[], %{}}, fn metric, {contexts, all_paths} ->
+        new_context = %Context{
+          time_from: time_from,
+          time_to: time_to,
+          metric: metric,
+          accuracy: accuracy
+        }
 
-    new_context = %Context{
-      time_from: time_from,
-      time_to: time_to,
-      metrics: metrics,
-      accuracy: accuracy
-    }
+        mode =
+          if Map.has_key?(state.chart_contexts, metric) do
+            mode
+          else
+            :full
+          end
 
-    context =
-      if mode == :update do
-        merge_contexts(state.charts_context, new_context)
-      else
-        new_context
-      end
+        context =
+          if mode == :update do
+            state.chart_contexts
+            |> Map.get(metric)
+            |> merge_contexts(new_context)
+          else
+            new_context
+          end
 
-    {:ok, {charts, paths, accumulators}} = query_module(mode).query(context)
+        {:ok, {chart, paths_mapping, accumulators}} = query_module(mode).query(context)
 
-    context = %Context{context | data: charts, paths: paths, accumulators: accumulators}
+        context = %Context{
+          context
+          | data: chart,
+            paths_mapping: paths_mapping,
+            accumulators: accumulators
+        }
 
-    send_data(respond_to, :charts, {mode, charts, elements_tree(paths)})
+        send_data(respond_to, :charts, {mode, metric, chart})
+
+        {[{metric, context} | contexts], Map.merge(all_paths, paths_mapping)}
+      end)
+
+    send_data(respond_to, :elements_tree, all_paths |> Map.values() |> elements_tree())
 
     alive_pipelines =
       Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
@@ -97,8 +107,13 @@ defmodule Membrane.Dashboard.DataManager do
 
     send_data(respond_to, :query_end, {time_from, time_to})
 
-    {:noreply,
-     %{charts_context: context, alive_pipelines: alive_pipelines, last_query: DateTime.utc_now()}}
+    state = %{
+      chart_contexts: Map.new(chart_contexts),
+      alive_pipelines: alive_pipelines,
+      last_query: DateTime.utc_now()
+    }
+
+    {:noreply, state}
   end
 
   defp query_module(:update), do: ChartsUpdate

@@ -23,5 +23,3 @@ jobs:
       - run: mix compile
       - run: mix dialyzer
       - run: mix docs
-      - run: npm ci --prefix assets
-      - run: npm run lint --prefix assets

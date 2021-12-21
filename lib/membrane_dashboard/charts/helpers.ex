@@ -3,29 +3,33 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   Module has functions useful for Membrane.Dashboard.Charts.Full and Membrane.Dashboard.Charts.Update.
   """
 
-  alias Membrane.Dashboard.Repo
-
   import Membrane.Dashboard.Helpers
   import Ecto.Query, only: [from: 2]
+
+  alias Membrane.Dashboard.Repo
+  alias Membrane.Dashboard.Charts
 
   require Logger
 
   @type rows_t :: [[term()]]
   @type interval_t :: [float()]
-  @type series_t :: [{{path :: String.t(), data :: list(integer())}, accumulator :: any()}]
+  @type series_t :: [
+          {{path_id :: non_neg_integer(), data :: list(integer())}, accumulator :: any()}
+        ]
 
   @doc """
-  Queries all measurements for given time range and returns them grouped by their metrics types.
+  Queries all measurements for given time range, metric and accuracy and returns them together
+  with mapping of its component path ids to the path strings.
   """
-  @spec query_measurements(non_neg_integer(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, %{String.t() => rows_t()}} | :error
-  def query_measurements(accuracy, time_from, time_to) do
+  @spec query_measurements(non_neg_integer(), non_neg_integer(), String.t(), non_neg_integer()) ::
+          {:ok, rows_t(), Charts.chart_paths_mapping_t()} | :error
+  def query_measurements(time_from, time_to, metric, accuracy) do
     with {:ok, %Postgrex.Result{rows: measurements_rows}} <-
-           Repo.query(measurements_query(accuracy, time_from, time_to)),
+           Repo.query(measurements_query(time_from, time_to, metric, accuracy)),
          component_path_rows <- Repo.all(component_paths_query(measurements_rows)) do
-      component_paths = Map.new(component_path_rows)
+      paths_mapping = Map.new(component_path_rows)
 
-      {:ok, group_rows_by_metrics(measurements_rows, component_paths)}
+      {:ok, measurements_rows, paths_mapping}
     else
       error ->
         Logger.error(
@@ -36,17 +40,16 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     end
   end
 
-  defp measurements_query(accuracy, time_from, time_to) do
+  defp measurements_query(time_from, time_to, metric, accuracy) do
     accuracy_in_seconds = to_seconds(accuracy)
 
     """
       SELECT
       floor(extract(epoch from "time")/#{accuracy_in_seconds})*#{accuracy_in_seconds} AS time,
       component_path_id,
-      metric,
       value
       FROM measurements
-      WHERE time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}'
+      WHERE time BETWEEN '#{parse_time(time_from)}' AND '#{parse_time(time_to)}' AND metric = '#{metric}'
       ORDER BY time;
     """
   end
@@ -66,20 +69,6 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   @spec to_seconds(non_neg_integer()) :: float()
   def to_seconds(time),
     do: time / 1000
-
-  @doc """
-  Given rows from the result of `Postgrex.Result` structure, returns map: `%{metric => rows}`.
-  """
-  @spec group_rows_by_metrics(rows_t(), map()) :: %{
-          String.t() => rows_t()
-        }
-  def group_rows_by_metrics(rows, paths) do
-    Enum.group_by(
-      rows,
-      fn [_time, _path_id, metric, _value] -> metric end,
-      fn [time, path_id, _metric, value] -> [time, Map.fetch!(paths, path_id), value] end
-    )
-  end
 
   @doc """
   Calculates number of values that should appear in timeline's interval.
@@ -149,9 +138,9 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     |> process_cumulative_series(interval, initial_accumulator)
   end
 
-  # converts rows from `measurements` table to list of tuples `{path, data}`, where data is a list of tuples contatining timestamps and values
+  # converts rows from `measurements` table to list of tuples `{path_id, data}`, where data is a list of tuples contatining timestamps and values
   defp rows_to_data_by_paths(rows) do
-    Enum.group_by(rows, fn [_time, path, _value] -> path end, fn [time, _path, value] ->
+    Enum.group_by(rows, fn [_time, path_id, _value] -> path_id end, fn [time, _path_id, value] ->
       {Decimal.to_float(time), value}
     end)
   end
