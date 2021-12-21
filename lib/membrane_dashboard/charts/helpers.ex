@@ -13,7 +13,9 @@ defmodule Membrane.Dashboard.Charts.Helpers do
 
   @type rows_t :: [[term()]]
   @type interval_t :: [float()]
-  @type series_t :: [{{path_id :: non_neg_integer(), data :: list(integer())}, accumulator :: any()}]
+  @type series_t :: [
+          {{path_id :: non_neg_integer(), data :: list(integer())}, accumulator :: any()}
+        ]
 
   @doc """
   Queries all measurements for given time range, metric and accuracy and returns them together
