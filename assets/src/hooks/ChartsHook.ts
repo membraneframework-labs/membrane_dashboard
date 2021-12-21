@@ -42,21 +42,19 @@ const ChartsHook = {
       const { metric, data: chartData } = payload as RefreshData;
 
       let chart;
-      if (!(metric in this.charts)) {
+      if (metric in this.charts) {
+        chart = this.charts[metric];
+      } else {
         chart = this.charts[metric] = createChart(
           this.el,
           this.el.scrollWidth - 20,
           metric
         );
-      } else {
-        chart = this.charts[metric];
       }
 
       for (let i = chart.series.length - 1; i >= 0; i--) {
         chart.delSeries(i);
       }
-
-      // new series can be different from old ones, so all old series should be deleted
 
       // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
       // is multiplied by 1000

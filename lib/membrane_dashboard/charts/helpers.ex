@@ -7,26 +7,27 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   import Ecto.Query, only: [from: 2]
 
   alias Membrane.Dashboard.Repo
+  alias Membrane.Dashboard.Charts
 
   require Logger
 
   @type rows_t :: [[term()]]
   @type interval_t :: [float()]
-  @type series_t :: [{{path :: String.t(), data :: list(integer())}, accumulator :: any()}]
+  @type series_t :: [{{path_id :: non_neg_integer(), data :: list(integer())}, accumulator :: any()}]
 
   @doc """
   Queries all measurements for given time range, metric and accuracy and returns them together
   with mapping of its component path ids to the path strings.
   """
   @spec query_measurements(non_neg_integer(), non_neg_integer(), String.t(), non_neg_integer()) ::
-          {:ok, rows_t(), %{non_neg_integer() => String.t()}} | :error
+          {:ok, rows_t(), Charts.chart_paths_mapping_t()} | :error
   def query_measurements(time_from, time_to, metric, accuracy) do
     with {:ok, %Postgrex.Result{rows: measurements_rows}} <-
            Repo.query(measurements_query(time_from, time_to, metric, accuracy)),
          component_path_rows <- Repo.all(component_paths_query(measurements_rows)) do
-      components_mapping = Map.new(component_path_rows)
+      paths_mapping = Map.new(component_path_rows)
 
-      {:ok, measurements_rows, components_mapping}
+      {:ok, measurements_rows, paths_mapping}
     else
       error ->
         Logger.error(
