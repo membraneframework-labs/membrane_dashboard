@@ -13,7 +13,7 @@ defmodule Membrane.Dashboard.Charts do
   @type chart_data_t :: %{
           series: [%{label: String.t()}],
           data: [[integer()]]
-  }
+        }
 
   @typedoc """
   A mapping from a `path_id` to the actual path's string representation.

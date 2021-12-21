@@ -10,7 +10,6 @@ defmodule Membrane.Dashboard.Charts.Helpers do
 
   require Logger
 
-
   @type rows_t :: [[term()]]
   @type interval_t :: [float()]
   @type series_t :: [{{path :: String.t(), data :: list(integer())}, accumulator :: any()}]

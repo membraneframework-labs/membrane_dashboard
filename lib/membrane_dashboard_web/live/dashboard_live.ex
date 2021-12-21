@@ -10,7 +10,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
   alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
-
   require Logger
 
   @metrics ["caps", "event", "store", "take_and_demand", "buffer", "queue_len", "bitrate"]
