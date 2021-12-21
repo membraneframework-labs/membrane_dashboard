@@ -13,7 +13,7 @@ defmodule Membrane.DashboardWeb.Live.Components.MetricsSelect do
 
   @impl true
   def update(assigns, socket) do
-    selectable_metrics = assigns.available_metrics -- assigns.metrics
+    selectable_metrics = Map.keys(assigns.available_metrics) -- assigns.metrics
 
     socket
     |> assign(assigns)
@@ -50,7 +50,7 @@ defmodule Membrane.DashboardWeb.Live.Components.MetricsSelect do
             >
               Add metric
             </button>
-            <div x-show="open" @click.away="open = false" class="dropdown-container w-64 left-0 bottom-2">
+            <div x-show="open" @click.away="open = false" class="dropdown-container w-80 left-0 bottom-2">
               <%= for metric <- @selectable_metrics do %>
                 <div
                   @click="open = false"
@@ -58,7 +58,7 @@ defmodule Membrane.DashboardWeb.Live.Components.MetricsSelect do
                   phx-click={"metrics:add:#{metric}"}
                   phx-target={@myself}
                 >
-                  <%= metric %>
+                  <%= metric %> <span class="text-gray-300 font-light">(<%= Map.get(@available_metrics, metric) %>)</span>
                 </div>
               <% end %>
             </div>

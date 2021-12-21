@@ -12,7 +12,15 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   require Logger
 
-  @metrics ["caps", "event", "store", "take_and_demand", "buffer", "queue_len", "bitrate"]
+  @metrics_with_descriptions %{
+    "caps" => "total number of distinct caps received",
+    "event" => "total number of received events",
+    "store" => "current size of InputBuffer during store operation",
+    "take_and_demand" => "current size of InputBuffer during take_and_demand operation",
+    "buffer" => "number of processed buffers per second",
+    "bitrate" => "number of bits processed per second",
+    "queue_len" => "number of pending messages in message queue"
+  }
 
   @initial_time_offset 60
   @initial_accuracy 100
@@ -35,7 +43,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         update_range: @initial_time_offset,
 
         # cached query data
-        available_metrics: @metrics,
+        available_metrics: @metrics_with_descriptions,
         metrics: [],
         data_manager: nil,
 
