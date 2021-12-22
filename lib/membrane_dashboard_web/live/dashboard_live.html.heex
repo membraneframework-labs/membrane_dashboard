@@ -143,7 +143,14 @@
       <div id="dagre-controls" class="flex text-white p-4">
         <%# TODO add explanation for snapshot mode %>
         <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
-          Snapshot mode: OFF
+          <.tooltip 
+            text="Snapshot mode allows you to freeze diagram updates to move and rearrange elements as you please" 
+            class="bottom-8 -right-16 min-w-fit w-40"
+          >
+            <.info_icon />
+          </.tooltip>
+
+          <span class="ml-1">Snapshot mode: OFF</span>
         </button>
         <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
           <.fullscreen_exit_icon class="mr-2" />

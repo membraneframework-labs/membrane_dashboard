@@ -306,10 +306,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   ### SEARCH FRONTEND EVENTS ###
   #################################
 
-
   @impl true
-  def handle_event("search:refresh", %{"timeFrom" => time_from, "timeTo" => time_to} = params, socket) do
-    IO.inspect params
+  def handle_event("search:refresh", %{"timeFrom" => time_from, "timeTo" => time_to}, socket) do
     case parse_time_range(time_from, time_to) do
       {:ok, {from, to}} ->
         socket
@@ -359,15 +357,16 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   def handle_event("search:" <> event, _params, socket) when event in ["go-next", "go-prev"] do
-    interval = case event do
-      "go-next" -> socket.assigns.update_range * 1_000
-      "go-prev" -> -socket.assigns.update_range * 1_000
-    end
+    interval =
+      case event do
+        "go-next" -> socket.assigns.update_range * 1_000
+        "go-prev" -> -socket.assigns.update_range * 1_000
+      end
 
     socket
     |> push_patch_with_params(%{
       from: socket.assigns.time_from + interval,
-      to: socket.assigns.time_to + interval,
+      to: socket.assigns.time_to + interval
     })
     |> noreply()
   end
