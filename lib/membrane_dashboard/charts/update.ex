@@ -95,7 +95,11 @@ defmodule Membrane.Dashboard.Charts.Update do
         updated_data = append_data(truncated_old_data ++ new_series_data, new_data)
 
         chart_data = %{
-          series: joined_paths_mapping |> Map.keys() |> Enum.sort() |> Enum.map(&%{label: &1}),
+          # this is just wrong...
+          series:
+            joined_paths_mapping
+            |> Enum.sort_by(fn {key, _value} -> key end)
+            |> Enum.map(fn {_key, value} -> %{label: value} end),
           data: updated_data
         }
 

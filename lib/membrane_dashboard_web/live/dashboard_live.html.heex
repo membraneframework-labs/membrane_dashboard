@@ -46,9 +46,11 @@
             class="default-input w-24 mr-2"
           />
           <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div>
-          <button name="button" type="submit" class="default-button h-8">
-            <.ruler_icon />
-          </button>
+          <.tooltip text="Apply accuracy" class="-left-8 -bottom-8">
+            <button name="button" type="submit" class="default-button h-8">
+              <.ruler_icon />
+            </button>
+          </.tooltip>
         </div>
       </form>
 
@@ -66,6 +68,17 @@
               />
             </div>
           <% end %>
+          
+          <div class="flex mr-2">
+            <%= for {name, rotate, tooltip_text} <- [{"go-prev", "rotate-[-90deg]", "Go back #{@update_range} seconds"}, {"go-next", "rotate-90", "Go forward #{@update_range} seconds"}] do %>
+              <.tooltip text={tooltip_text} class="-left-8 -bottom-8">
+                  <button name={name} type="button" class="group relative default-button px-1 mr-1" phx-click={"search:#{name}"}>
+                    <.small_arrow_up_icon class={"#{rotate}"} />
+                  </button>
+              </.tooltip>
+            <% end %>
+          </div>
+          
 
           <div id="search-button" class="flex">
             <button 
@@ -85,14 +98,16 @@
         </div>
         <div class="flex justify-center items-center h-full" phx-update="ignore">
           <div x-data="{ open: false }" class="relative h-8">
-            <button 
-              type="button"
-              @click="open = !open" 
-              @keydown.escape="open = false"
-              class="default-button h-full mr-2"
-            >
-              <.clock_icon />
-            </button>
+            <.tooltip text="Select an interval" class="-left-8 -bottom-8">
+              <button 
+                type="button"
+                @click="open = !open" 
+                @keydown.escape="open = false"
+                class="default-button h-8 mr-2"
+              >
+                <.clock_icon />
+              </button>
+            </.tooltip>
             <div x-show="open" @click.away="open = false" class="dropdown-container">
               <%= for {label, range} <- [{"Last minute", "1"}, {"Last 3 minutes", "3"}] do %>
                 <button 
@@ -108,10 +123,11 @@
             </div>
           </div>
         </div>
-        <button x-on:click="window.open('/dashboard')" type="button" class="flex justify-center items-center text-white font-bold bg-orange-500 hover:bg-orange-700 rounded-md p-1" phx-update="ignore">
-          <.phoenix_icon class="text-white h-7 w-7 mr-1" />
-          Phoenix Dashboard
-        </button>
+        <.tooltip text="Phoenix Dashboard" class="right-0 -bottom-8">
+          <button x-on:click="window.open('/dashboard')" type="button" class="flex justify-center items-center text-white font-bold bg-orange-500 hover:bg-orange-700 rounded-md h-8 p-1" phx-update="ignore">
+            <.phoenix_icon class="text-white h-7 w-7 mr-1" />
+          </button>
+        </.tooltip>
       </form>
     </div>
   </div>
@@ -127,7 +143,14 @@
       <div id="dagre-controls" class="flex text-white p-4">
         <%# TODO add explanation for snapshot mode %>
         <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
-          Snapshot mode: OFF
+          <.tooltip 
+            text="Snapshot mode allows you to freeze diagram updates to move and rearrange elements as you please" 
+            class="bottom-8 -right-16 min-w-fit w-40"
+          >
+            <.info_icon />
+          </.tooltip>
+
+          <span class="ml-1">Snapshot mode: OFF</span>
         </button>
         <button data-id="dagre-fit-view" class="default-button mr-3"  type="button" phx-update="ignore">
           <.fullscreen_exit_icon class="mr-2" />

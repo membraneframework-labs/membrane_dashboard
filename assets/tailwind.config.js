@@ -16,6 +16,9 @@ module.exports = {
     },
   },
   variants: {
-    extend: {},
+    extend: {
+      opacity: ["disabled"],
+    },
+    backgroundColor: ({ after }) => after(["disabled", "group-disabled"]),
   },
 };
