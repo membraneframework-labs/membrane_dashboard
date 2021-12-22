@@ -117,6 +117,31 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec small_arrow_up_icon(map()) :: Phoenix.LiveView.Rendered.t()
+  def small_arrow_up_icon(assigns) do
+    assigns = assign_class(assigns)
+
+    ~H"""
+    <svg class={"#{@class}"} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+      <path stroke="none" fill="currentColor" d="M12 10.828l-4.95 4.95-1.414-1.414L12 8l6.364 6.364-1.414 1.414z"/>
+    </svg>
+    """
+  end
+
+  @spec tooltip(map()) :: Phoenix.LiveView.Rendered.t()
+  def tooltip(assigns) do
+    assigns = assign_class(assigns)
+
+    ~H"""
+    <div class="group relative">
+      <%= render_slot(@inner_block) %>
+      <span class={"#{@class} transition-all delay-150 duration-500 absolute z-10 min-w-max text-xs font-medium leading-none whitespace-no-wrap text-white p-2 opacity-0 group-hover:opacity-90 invisible group-hover:visible bg-gray-800 shadow-lg rounded-md"}>
+        <%= @text %>
+      </span>
+    </div>
+    """
+  end
+
   defp assign_class(assigns) do
     assign_new(assigns, :class, fn -> "" end)
   end

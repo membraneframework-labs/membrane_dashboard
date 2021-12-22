@@ -2,13 +2,28 @@
 
 This repository contains a dashboard for monitoring Membrane's pipelines.
 
-It uses `membrane_timescaledb_reporter` for obtaining information about pipelines states. 
+Currently the dashboard relies on information persisted by `membrane_timescaledb_reporter` to 
+the TimescaleDB database from which the dashboard queries information. 
 
-For now it supports:
-* displaying dependency diagram of pipeline's elements for given time range
-* charts for monitoring metrics with live update
+Major functionalities:
+* Search performed on specific time range constant refresh with a  `live mode` being updated every 5 seconds
+* Pipelines' elements diagram with a set of interactive controls allowing for the following: 
+    - exporting diagram to a file 
+    - focusing a certain pipeline on a diagram
+    - selecting a subset of elements that the chart should limit display to 
+    - in case of invalid pipeline termination manually marking the pipeline as dead
+* Charts plotting selected metrics values for each present element that has emitted them previously 
 
-It is part of [Membrane Multimedia Framework](https://membraneframework.org).
+**IMPORTANT**
+
+Make sure that you have enabled `membrane_core`'s telemetry in your application. By default any core's metrics are turned off
+therefore dashboard will not be able to display information. 
+
+For available metrics please refer to the latest core's master branch
+[Membrane.Telemetry](https://github.com/membraneframework/membrane_core/blob/3193167ee8eb2d842006d43937d06bda9933d37f/lib/membrane/telemetry.ex#L30) module.
+
+To display pipeline diagrams make sure that `:links` and `:inits_and_terminates` telemetry flags are present,
+for certain metrics to be present on charts make sure that the desired metrics are added under `:metrics` key. 
 
 ## Usage
 
@@ -38,6 +53,9 @@ DB_USER=postgres DB_PASS=postgres DB_NAME=membrane_timescaledb_reporter DB_HOST=
 ```
 
 Application uses port `8000` by default. If `HOST=localhost`, dashboard will be available at address `http://localhost:8000`.
+
+## Dashboard functionalities
+
 
 ## Copyright and License
 
