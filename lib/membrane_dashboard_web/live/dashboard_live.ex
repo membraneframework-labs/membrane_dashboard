@@ -8,7 +8,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
 
   alias Membrane.Dashboard.{DataManager, Helpers}
   alias Membrane.DashboardWeb.Router.Helpers, as: Routes
-  alias Membrane.DashboardWeb.Live.Components.ElementsSelect
 
   require Logger
 

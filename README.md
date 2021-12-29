@@ -13,6 +13,10 @@ Major functionalities:
     - selecting a subset of elements that the chart should limit display to 
     - in case of invalid pipeline termination manually marking the pipeline as dead
 * Charts plotting selected metrics values for each present element that has emitted them previously 
+    
+Optional functionalities:
+* Zipkin's opentelemetry traces search (to use you must set `USE_ZIPKIN=true` environmental variable and optionally `ZIPKIN_URL` which defaults to `http://localhost:9411` which is a default
+  zipkin's address when running locally)
 
 **IMPORTANT**
 

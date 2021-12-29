@@ -1,18 +1,18 @@
 defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
   @moduledoc """
-  Component responsible for extracting opentelemetry's traceId given active elements
-  path.
+  Component integrating a zipkin opentelemetry service. It allows to searching zipkin for potential
+  traces and when one gets found it displays a button redirecting to zipkin's dashboard.
 
   ## Usage
-  By default the component is hidden. To enable it one must set `USE_ZIPKIN` environmental variable
-  to 'true'.
+  By default the component is hidden. To enable it one must set `USE_ZIPKIN` environmental variable to 'true'.
+  To change default zipkin's url one can set `ZIPKIN_URL` env (defaults to `http://localhost:9411`).
 
   ## How it works
   It works as follows:
-  - define a tag's value regex  and a tag name necessary for querying the zipkin
+  - define a tag's value regex (a regex with a single capture group responsible for catching the tag value) and a tag name necessary for querying the zipkin
   - receive active path of elements and join it into a single string
-  - run the value regex with a single capture group against given string
-  - extract the value from capture group and try to find a trace having tag of given name with the extracted value
+  - run the value regex against given path string
+  - extract the value from the capture group and try to find a trace having tag of given name with the extracted value
 
   Example, let's say that we have the following variables:
   - regex - '{:endpoint, "(.+?)}'
@@ -21,11 +21,10 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
 
   We know beforehand that our telemetry trace must have a `state_id` tag with a value representing an endpoint id.
   By matching the regex against the path we will extract '6db9f56e-3941-467f-82b1-e65c8d898899' id, next
-  we are querying the zipkin instance for a condition where 'state_id={id}' and from the response we will extract
-  the trace id (if the trace gets found).
-
-  If the trace gets found then we display a redirect button.
+  we are querying the zipkin instance with a condition where 'state_id={id}' and from the response we will extract
+  the trace id (if the trace gets found). If the trace gets found then we display a redirect button.
   """
+
   use Membrane.DashboardWeb, :live_component
 
   import Membrane.DashboardWeb.Live.Helpers
@@ -148,13 +147,16 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
       {:ok, trace_id}
     else
       {:extract, _} ->
-        {:error, "Failed to extract tag value for path: '#{path}'"}
+        {:error, "Failed to extract tag value for path: '#{path}'."}
 
       {:error, :not_found} ->
         {:error, :not_found}
 
+      {:ok, %HTTPoison.Response{}} ->
+        {:error, "Invalid zipkin's response. Make sure you are using a valid zipkin's url."}
+
       {:error, %HTTPoison.Error{}} ->
-        {:error, "Failed to connect to zipkin instance, check if it is actually running"}
+        {:error, "Failed to connect to zipkin instance, check if it is actually running."}
 
       other ->
         Logger.error(
