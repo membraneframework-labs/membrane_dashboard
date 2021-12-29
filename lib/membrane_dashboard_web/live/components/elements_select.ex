@@ -6,18 +6,7 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
 
   use Membrane.DashboardWeb, :live_component
 
-  import Membrane.DashboardWeb.Live.Helpers, only: [arrow_down_icon: 1]
-
-  defmodule State do
-    @moduledoc false
-
-    @type t :: %__MODULE__{
-            current_select_values: [String.t()],
-            active_elements: [String.t()]
-          }
-
-    defstruct current_select_values: [], active_elements: []
-  end
+  import Membrane.DashboardWeb.Live.Helpers, only: [info_header: 1, arrow_down_icon: 1]
 
   @impl true
   def mount(socket) do
@@ -28,11 +17,13 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
   def render(assigns) do
     ~H"""
     <div id={@id} class="flex flex-col mb-3">
-      <h3 class="subheader">Focused path</h3>
-      <p class="description mb-3">You may want to filter charts to a subset of elements or a single particular element, you can do so by selecting elements' path</p>
-      <%= if length(@state.active_elements) > 0 do %>
+      <.info_header
+        title="Selected path"
+        tooltip="You may want to filter charts to a subset of elements or a single particular element, you can do so by selecting elements' path"
+      />
+      <%= if length(@active_path) > 0 do %>
         <div class="flex flex-col justify-center bg-secondary rounded-xl w-fit p-3">
-          <%= for element <- Enum.intersperse(@state.active_elements, :icon) do %>
+          <%= for element <- Enum.intersperse(@active_path, :icon) do %>
             <%= if element == :icon do %>
               <div class="flex justify-center items-center p-2">
                 <.arrow_down_icon />
@@ -57,7 +48,7 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
           <div>
         </div>
       <% else %>
-        <div class="flex items-center bg-secondary rounded-xl p-3 text-white font-semibold">
+        <div class="flex items-center bg-secondary rounded-xl p-3 description">
           No path selected...
         </div>
       <% end %>
@@ -67,12 +58,8 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
 
   @impl true
   def handle_event("reset-active-elements", _params, socket) do
-    send_self(:reset)
+    send(self(), {:elements_select, :reset})
 
     {:noreply, socket}
-  end
-
-  defp send_self(message) do
-    send(self(), {:elements_select, message})
   end
 end

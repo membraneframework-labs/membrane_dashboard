@@ -45,8 +45,7 @@
             phx-debounce="blur" 
             class="default-input w-24 mr-2"
           />
-          <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div>
-          <.tooltip text="Apply accuracy" class="-left-8 -bottom-8">
+          <div id="accuracy-unit" class="text-white font-semibold mr-2">ms</div> <.tooltip text="Apply accuracy" class="-left-8 -bottom-8">
             <button name="button" type="submit" class="default-button h-8">
               <.ruler_icon />
             </button>
@@ -137,15 +136,27 @@
 
   <div id="pipelines-diagram" class="m-4">
     <h2 class="header">Pipeline diagrams</h2>
-    <p class="description mb-4">(Hold 'Alt' key for focus mode)</p>
+    <div class="flex items-center mb-2">
+      <p class="description mr-1"> 
+        (Hold 'Alt' key for focus mode.)
+      </p>
+      <.tooltip
+        text= "In focus mode you can click on any element to select it, then the element's path can be used by other component to display relevant data."
+        class="text-center bottom-8 -left-24 w-60"
+        min_width="min-w-fit"
+      >
+        <.info_icon />
+      </.tooltip>
+    </div>
+
     <div id="dagre-diagram" class="dagre flex flex-col justify-center items-center bg-secondary rounded-xl overflow-hidden pd-1">
       <div id="dagre-container" class="flex-grow w-full" phx-hook="Dagre" phx-update="ignore"> </div>
       <div id="dagre-controls" class="flex text-white p-4">
-        <%# TODO add explanation for snapshot mode %>
         <button data-id="dagre-mode" class="default-button mr-3" type="button" phx-update="ignore">
           <.tooltip 
             text="Snapshot mode allows you to freeze diagram updates to move and rearrange elements as you please" 
             class="bottom-8 -right-16 min-w-fit w-40"
+            min_width="min-w-fit"
           >
             <.info_icon />
           </.tooltip>
@@ -201,14 +212,20 @@
   <% end %>
 
   <div id="charts" class="m-4">
-    <h2 class="header mb-4">Charts</h2>
     <.live_component 
       id="elements-select" 
       module={Membrane.DashboardWeb.Live.Components.ElementsSelect} 
-      elements_tree={@elements_tree} 
-      state={@elements_select_state} 
+      active_path={@active_path} 
       disabled={@data_loading} 
     />
+    <%= if System.get_env("USE_ZIPKIN") == "true" do %>
+      <.live_component
+        id="opentelemetry"
+        module={Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry}
+        active_path={@active_path}
+      />
+    <% end %>
+    <h2 class="header mb-4">Charts</h2>
     <.live_component 
       id="metrics-select" 
       module={Membrane.DashboardWeb.Live.Components.MetricsSelect} 

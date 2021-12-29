@@ -31,6 +31,10 @@
   .description {
     @apply text-lg text-white;
   }
+  
+  .error {
+    @apply text-lg text-red-500;
+  }
 
   .dagre {
     height: 600px;

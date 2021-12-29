@@ -6,6 +6,8 @@ defmodule Membrane.DashboardWeb.Live.Components.MetricsSelect do
 
   use Membrane.DashboardWeb, :live_component
 
+  import Membrane.DashboardWeb.Live.Helpers, only: [info_header: 1]
+
   @impl true
   def mount(socket) do
     {:ok, socket}
@@ -25,9 +27,10 @@ defmodule Membrane.DashboardWeb.Live.Components.MetricsSelect do
   def render(assigns) do
     ~H"""
     <div id={@id} class="flex flex-col mb-3">
-      <h3 class="subheader">Metrics</h3>
-      <p class="description mb-3">Select from a set of metrics query from</p>
-
+      <.info_header
+        title="Metrics"
+        tooltip="Select from a set of metrics to query from"
+      />
       <div class="flex items-center rounded-lg bg-secondary p-3">
         <div class="flex justify-center items-center">
           <%= for metric <- @metrics do %>

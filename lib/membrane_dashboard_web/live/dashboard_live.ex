@@ -52,14 +52,25 @@ defmodule Membrane.DashboardWeb.DashboardLive do
         update: false,
 
         # UI related
-        elements_tree: %{},
-        elements_select_state: %ElementsSelect.State{},
+        #
+        active_path: [],
         data_loading: false,
         top_level_combos: nil,
         alive_pipelines: []
       )
 
     {:ok, socket}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    case socket.assigns.data_manager do
+      nil ->
+        :ok
+
+      {_ref, pid} ->
+        GenServer.stop(pid)
+    end
   end
 
   # updates charts and reloads dagree when live update is enabled
@@ -132,19 +143,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     |> noreply()
   end
 
-  def handle_info({:data_query, :elements_tree, elements_tree}, socket) do
-    new_elements_select_state =
-      Map.replace!(
-        socket.assigns.elements_select_state,
-        :current_select_values,
-        Map.keys(elements_tree)
-      )
-
-    socket
-    |> assign(elements_tree: elements_tree, elements_select_state: new_elements_select_state)
-    |> noreply()
-  end
-
   def handle_info({:data_query, :charts, {mode, metric, chart}}, socket)
       when mode in [:full, :update] do
     socket
@@ -169,12 +167,8 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   #######################
 
   def handle_info({:elements_select, :reset}, socket) do
-    new_elements_select_state = %ElementsSelect.State{
-      current_select_values: Map.keys(socket.assigns.elements_tree)
-    }
-
     socket
-    |> assign(elements_select_state: new_elements_select_state)
+    |> assign(active_path: [])
     |> push_charts_search_prefix()
     |> noreply()
   end
@@ -182,12 +176,6 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_info({:elements_select, :apply_filter}, socket) do
     socket
     |> push_charts_search_prefix()
-    |> noreply()
-  end
-
-  def handle_info({:elements_select, %ElementsSelect.State{} = elements_select_state}, socket) do
-    socket
-    |> assign(elements_select_state: elements_select_state)
     |> noreply()
   end
 
@@ -286,12 +274,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     do: socket |> assign(top_level_combos: combos) |> noreply()
 
   def handle_event("dagre:focus:path", %{"path" => path}, socket) do
-    state = %ElementsSelect.State{
-      active_elements: path,
-      current_select_values: Map.keys(get_in(socket.assigns.elements_tree, path) || %{})
-    }
-
-    socket = assign(socket, elements_select_state: state)
+    socket = assign(socket, active_path: path)
 
     handle_info({:elements_select, :apply_filter}, socket)
   end
@@ -311,6 +294,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
     case parse_time_range(time_from, time_to) do
       {:ok, {from, to}} ->
         socket
+        |> assign(:active_path, [])
         |> push_patch_with_params(%{from: from, to: to, update: false})
         |> cancel_update()
 
@@ -323,7 +307,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   def handle_event("search:last-x-min", %{"value" => minutes}, socket) do
     case Integer.parse(minutes) do
       {minutes_as_int, _rem} ->
-        push_patch_with_params(socket, %{
+        socket
+        |> assign(:active_path, [])
+        |> push_patch_with_params(%{
           from: now(-60 * minutes_as_int),
           to: now(),
           update_range: 60 * minutes_as_int
@@ -372,7 +358,7 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   defp push_charts_search_prefix(socket) do
-    series_prefix = Enum.join(socket.assigns.elements_select_state.active_elements, "/")
+    series_prefix = Enum.join(socket.assigns.active_path, "/")
 
     push_event(socket, "charts:filter", %{seriesPrefix: series_prefix})
   end
