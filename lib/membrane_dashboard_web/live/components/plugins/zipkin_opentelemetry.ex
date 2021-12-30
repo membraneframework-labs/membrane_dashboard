@@ -6,23 +6,14 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
   ## Usage
   By default the component is hidden. To enable it one must set `USE_ZIPKIN` environmental variable to 'true'.
   To change default zipkin's url one can set `ZIPKIN_URL` env (defaults to `http://localhost:9411`).
+  Changing the default span's tag name can be done via `ZIPKIN_TAG_NAME` env (defaults to `state_component_path`).
 
   ## How it works
-  It works as follows:
-  - define a tag's value regex (a regex with a single capture group responsible for catching the tag value) and a tag name necessary for querying the zipkin
-  - receive active path of elements and join it into a single string
-  - run the value regex against given path string
-  - extract the value from the capture group and try to find a trace having tag of given name with the extracted value
+  The only available information for finding a trace is the component path of pipeline/bin/element selected by the user.
 
-  Example, let's say that we have the following variables:
-  - regex - '{:endpoint, "(.+?)}'
-  - tag_name - 'state_id'
-  - path - 'pipeline@57176@<0.870.0>/{:endpoint, "6db9f56e-3941-467f-82b1-e65c8d898899"} bin/:endpoint_bin bin/:rtp bin/}'
+  Given that any of trace's spans have an attribute linked with the given component path we should be able to find it.
 
-  We know beforehand that our telemetry trace must have a `state_id` tag with a value representing an endpoint id.
-  By matching the regex against the path we will extract '6db9f56e-3941-467f-82b1-e65c8d898899' id, next
-  we are querying the zipkin instance with a condition where 'state_id={id}' and from the response we will extract
-  the trace id (if the trace gets found). If the trace gets found then we display a redirect button.
+  By default #{inspect(__MODULE__)} will try to find a trace having a `state_component_path` tag name with a path as a value.
   """
 
   use Membrane.DashboardWeb, :live_component
@@ -34,8 +25,7 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
   # NOTE: for now the only supported elements containing opentelemetry are related
   # to videoroom so just for now leave the constant here and potentially add ability
   # to set them dynamically in the future...
-  @tag_name "state_id"
-  @tag_value_regex Regex.compile!("{:endpoint, \"(.+?)\"}")
+  @tag_name "state_component_path"
 
   @impl true
   def mount(socket) do
@@ -44,24 +34,21 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
 
   @impl true
   def update(assigns, socket) do
-    path = Enum.join(assigns.active_path, "/")
-
     assigns =
       Map.merge(assigns, %{
-        regex: @tag_value_regex.source,
-        tag_name: @tag_name,
+        tag_name: System.get_env("ZIPKIN_TAG_NAME", @tag_name),
         base_url: base_url(),
-        path: path,
-        trace_id: nil,
+        tag_value: "",
+        trace_ids: nil,
         error: nil,
         not_found: false
       })
 
     socket = assign(socket, assigns)
 
-    case extract_trace_id(path, @tag_value_regex, @tag_name) do
-      {:ok, trace_id} ->
-        {:ok, assign(socket, :trace_id, trace_id)}
+    case extract_trace_ids(assigns.active_path, @tag_name) do
+      {:ok, trace_ids, tag_value} ->
+        {:ok, assign(socket, %{trace_ids: trace_ids, tag_value: tag_value})}
 
       {:error, :not_found} ->
         {:ok, assign(socket, :not_found, true)}
@@ -77,48 +64,28 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
     <div id={@id} class="mb-3">
       <.info_header
         title="Zipkin OpenTelemetry"
-        tooltip="Given a regex (with a single capture group) and a tag name extracts tag value from selected path and based on that tries querying zipkin instance to find a related trace."
+        tooltip="Based on selected path tries querying zipkin instance to find a related trace. For more info check documentation."
       />
       <div class="flex flex-col bg-secondary rounded-lg p-3">
-        <div class="flex mb-3">
-          <div class="mr-3 flex justify-center items-center">
-            <label class="text-white font-bold mr-2">Regex</label>
-            <input
-              disabled
-              type="text"
-              value={@regex}
-              name="regex"
-              phx-debounce="blur"
-              class="default-input"
-            />
-          </div>
-          <div class="mr-3 flex justify-center items-center">
-            <label class="text-white font-bold mr-2">Tag name</label>
-            <input
-              disabled
-              type="text"
-              value={@tag_name}
-              name="tag_name"
-              phx-debounce="blur"
-              class="default-input"
-            />
-          </div>
-        </div>
-        <div class="flex items-center">
+        <div class="flex adjust-center">
           <%= cond do %>
-            <% @trace_id -> %>
-              <span class="font-bold text-white mr-1">Trace:</span>
-              <span class="font-semibold text-gray-300 mr-3"><%= @trace_id %></span>
-              <.tooltip text="Open in zipkin dashboard" class="-left-8 -top-8">
-                <button
-                  x-on:click={"window.open('#{dashboard_url(@base_url, @trace_id)}')"}
-                  type="button"
-                  class="default-button" phx-update="ignore"
-                >
-                  <.opentelemetry_icon class="text-white h-7 w-7 mr-3" />
-                  <span class="text-white text-md">View</span>
-                </button>
-              </.tooltip>
+            <% @trace_ids != nil -> %>
+              <%= for trace_id <- @trace_ids do %>
+                <div class="flex items-center">
+                  <span class="font-bold text-white mr-1">Trace:</span>
+                  <span class="font-semibold text-gray-300 mr-3"><%= trace_id %></span>
+                  <.tooltip text="Open in zipkin dashboard" class="-left-8 -top-8">
+                    <button
+                      x-on:click={"window.open('#{dashboard_url(@base_url, trace_id)}')"}
+                      type="button"
+                      class="default-button" phx-update="ignore"
+                    >
+                      <.opentelemetry_icon class="text-white h-7 w-7 mr-3" />
+                      <span class="text-white text-md">View</span>
+                    </button>
+                  </.tooltip>
+                </div>
+              <% end %>
 
             <% @error != nil -> %>
               <span class="error"><%= @error %></span>
@@ -136,15 +103,49 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
     """
   end
 
-  defp extract_trace_id("", _tag_regex, _tag_name), do: {:ok, nil}
+  defp extract_trace_ids([], _tag_name), do: {:ok, nil, ""}
 
-  defp extract_trace_id(path, tag_regex, tag_name) do
-    with {:extract, [_, tag_value]} <- Regex.run(tag_regex, path) |> then(&{:extract, &1}),
+  # traverses all subpaths of given path to
+  # encounter the first time trace ids get found
+  # so given a path of '[a, b, c, d]' it will query:
+  # [a, b, c, d] -> [a, b, c] -> [a, b] -> [a], and it will
+  # stop on the first match
+  defp extract_trace_ids(path, tag_name) do
+    reversed_path = Enum.reverse(path)
+
+    acc = {{:error, :not_found}, reversed_path}
+
+    Enum.reduce_while(1..length(path), acc, fn _i, {_error, reversed_path} ->
+      path =
+        reversed_path
+        |> Enum.reverse()
+        |> Enum.join("/")
+
+      path
+      |> do_extract_trace_ids(tag_name)
+      |> case do
+        {:ok, trace_ids, tag_value} ->
+          {:halt, {:ok, trace_ids, tag_value}}
+
+        error ->
+          {:cont, {error, tl(reversed_path)}}
+      end
+    end)
+    |> case do
+      {:ok, _trace_id, _tag_value} = result -> result
+      {{:error, _reason} = error, _path} -> error
+    end
+  end
+
+  defp do_extract_trace_ids("", _tag_name), do: {:ok, nil}
+
+  defp do_extract_trace_ids(path, tag_name) do
+    with tag_value <- tag_value_from_path(path),
          {:ok, %HTTPoison.Response{status_code: 200, body: body}} <-
            HTTPoison.get(api_query_url(base_url(), tag_name, tag_value)),
          {:ok, trace} <- Jason.decode(body),
-         {:ok, trace_id} <- find_trace_id(trace) do
-      {:ok, trace_id}
+         {:ok, trace_ids} <- find_trace_ids(trace) do
+      {:ok, trace_ids, tag_value}
     else
       {:extract, _} ->
         {:error, "Failed to extract tag value for path: '#{path}'."}
@@ -167,6 +168,13 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
     end
   end
 
+  # paths constructed by reporter contain a VM's process id which is not present in
+  # trace's tag values, therefore we need to get rid of that
+  # e.g. 'pipeline@1111@<100.0>/some_path' -> 'pipeline@<100.0>/some_path' (delete '@1111' which is a VM's process id)
+  def tag_value_from_path(path) do
+    Regex.replace(~r/(pipeline@)([0-9]+@)(.*)/, path, "\\1\\3")
+  end
+
   defp base_url() do
     System.get_env("ZIPKIN_URL", "http://localhost:9411")
   end
@@ -185,7 +193,11 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
     "#{base_url}/zipkin/traces/#{trace_id}"
   end
 
-  defp find_trace_id([]), do: {:error, :not_found}
+  defp find_trace_ids([]), do: {:error, :not_found}
 
-  defp find_trace_id([[%{"traceId" => trace_id} | _entries]]), do: {:ok, trace_id}
+  defp find_trace_ids(entries) when is_list(entries) do
+    entries
+    |> Enum.map(fn [%{"traceId" => trace_id} | _] -> trace_id end)
+    |> then(&{:ok, &1})
+  end
 end

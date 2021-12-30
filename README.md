@@ -16,7 +16,7 @@ Major functionalities:
     
 Optional functionalities:
 * Zipkin's opentelemetry traces search (to use you must set `USE_ZIPKIN=true` environmental variable and optionally `ZIPKIN_URL` which defaults to `http://localhost:9411` which is a default
-  zipkin's address when running locally)
+  zipkin's address when running locally, for more information please go see `Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry`).
 
 **IMPORTANT**
 
