@@ -94,8 +94,6 @@ defmodule Membrane.Dashboard.DataManager do
         {[{metric, context} | contexts], Map.merge(all_paths, paths_mapping)}
       end)
 
-    send_data(respond_to, :elements_tree, all_paths |> Map.values() |> elements_tree())
-
     alive_pipelines =
       Membrane.Dashboard.PipelineMarking.list_alive_pipelines(
         time_to
@@ -135,36 +133,5 @@ defmodule Membrane.Dashboard.DataManager do
 
   defp send_data(respond_to, type, data) do
     send(respond_to, {:data_query, type, data})
-  end
-
-  # Groups paths so that they create a tree of elements (nested maps, each key pointing to its children).
-  #
-  # By starting with a root element (a pipeline) we can go down the tree
-  # to checks for its children (either bins or elements) by eventually reaching
-  # the leafs which in this case should be simple elements.
-  # Leafs can be recognized as they point to empty maps.
-  defp elements_tree(paths) do
-    paths
-    |> List.flatten()
-    |> MapSet.new()
-    |> MapSet.to_list()
-    |> Enum.map(&(String.split(&1, "/") |> Enum.reverse() |> tl() |> Enum.reverse()))
-    |> do_group()
-  end
-
-  defp do_group([]), do: %{}
-
-  defp do_group(list) when is_list(list) do
-    list
-    |> Enum.group_by(&hd/1, &tl/1)
-    |> Enum.map(fn {key, value} ->
-      value =
-        value
-        |> Enum.reject(&(&1 == []))
-        |> do_group()
-
-      {key, value}
-    end)
-    |> Map.new()
   end
 end

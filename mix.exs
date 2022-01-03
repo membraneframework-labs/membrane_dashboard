@@ -42,7 +42,8 @@ defmodule Membrane.Dashboard.MixProject do
       {:jason, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.5", only: :dev},
-      {:esbuild, "~> 0.1", runtime: Mix.env() == :dev}
+      {:esbuild, "~> 0.1", runtime: Mix.env() == :dev},
+      {:httpoison, "~> 1.8"}
     ]
   end
 

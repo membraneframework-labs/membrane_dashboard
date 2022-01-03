@@ -6,6 +6,8 @@ defmodule Membrane.DashboardWeb.Live.Components.AlivePipelines do
 
   use Membrane.DashboardWeb, :live_component
 
+  import Membrane.DashboardWeb.Live.Helpers
+
   alias Phoenix.LiveView.JS
 
   @impl true
@@ -17,8 +19,10 @@ defmodule Membrane.DashboardWeb.Live.Components.AlivePipelines do
   def render(assigns) do
     ~H"""
     <div id={@id} class="m-4">
-      <h3 class="subheader">Pipeline marking</h3>
-      <p class="text-white mb-2">It may happen that pipeline terminating has not been registered. Here you can manually mark pipeline as dead.</p>
+      <.info_header
+        title="Pipeline marking"
+        tooltip="In case pipeline terminated abnormally (terminated callback has not been registered) you can manually mark pipeline as dead."
+      />
       <div id="alive-pipelines" class="flex items-center bg-secondary rounded-xl p-5">
         <%= for pipeline <- @alive_pipelines do %>
           <div x-data="{ open: false }" class="relative">
