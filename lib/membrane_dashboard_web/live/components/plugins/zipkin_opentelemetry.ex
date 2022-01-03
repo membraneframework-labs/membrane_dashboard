@@ -105,12 +105,13 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
 
   defp extract_trace_ids([], _tag_name), do: {:ok, nil, ""}
 
-  # traverses all subpaths of given path to
-  # encounter the first time trace ids get found
-  # so given a path of '[a, b, c, d]' it will query:
+  # Given a path tries to match on the longest subpath where any trace can be found.
+  # e.g. given a path of '[a, b, c, d]' it will query:
   # [a, b, c, d] -> [a, b, c] -> [a, b] -> [a], and it will
-  # stop on the first match
+  # stop on the first match where a trace gets found
   defp extract_trace_ids(path, tag_name) do
+    # start with a reversed path as it is easier to get a tail
+    # from a list rather than deleting the last element
     reversed_path = Enum.reverse(path)
 
     acc = {{:error, :not_found}, reversed_path}
@@ -184,7 +185,8 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
       base_url,
       "/zipkin/api/v2/traces",
       "?annotationQuery=",
-      URI.encode_www_form("#{tag_name} and #{tag_name}=#{tag_value}") <> "&limit=1"
+      URI.encode_www_form("#{tag_name} and #{tag_name}=#{tag_value}"),
+      "&limit=1"
     ]
     |> Enum.join()
   end
