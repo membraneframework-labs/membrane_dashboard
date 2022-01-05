@@ -373,9 +373,9 @@ defmodule Membrane.DashboardWeb.DashboardLive do
   end
 
   # returns current UNIX time with optional offset
-  defp now(offset \\ 0) do
+  defp now(offset \\ 0, time_unit \\ :second) do
     DateTime.utc_now()
-    |> DateTime.add(offset)
+    |> DateTime.add(offset, time_unit)
     |> DateTime.to_unix(:millisecond)
   end
 

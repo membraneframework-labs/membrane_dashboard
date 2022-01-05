@@ -94,16 +94,27 @@ const ChartsHook = {
         !!chart,
         "Chart should be present during update but is not..."
       );
+      
+      // if the number of series has changed it means that 
+      // either new series have been added or removed
+      // in such case just clear the chart and add all the series from the
+      // chartData
+      if (chart.series.length !== chartData.series.length) {
+        // delete the old series
+        for (let i = chart.series.length - 1; i >= 0; i--) {
+          chart.delSeries(i);
+        }
 
-      for (let i = chart.series.length; i < chartData.series.length; i++) {
-        const series = chartData.series[i];
-        const color = randomColor();
-        series.stroke = color;
-        series.spanGaps = true;
-        series.points = {
-          width: 1 / window.devicePixelRatio,
-        };
-        chart.addSeries(series);
+        for (let i = 0; i < chartData.series.length; i++) {
+          const series = chartData.series[i];
+          const color = randomColor();
+          series.stroke = color;
+          series.spanGaps = true;
+          series.points = {
+            width: 1 / window.devicePixelRatio,
+          };
+          chart.addSeries(series);
+        }
       }
 
       // given series is empty therefore hide the charts

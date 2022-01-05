@@ -43,7 +43,8 @@ defmodule Membrane.Dashboard.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.5", only: :dev},
       {:esbuild, "~> 0.1", runtime: Mix.env() == :dev},
-      {:httpoison, "~> 1.8"}
+      {:httpoison, "~> 1.8"},
+      {:explorer, "~> 0.1.0-dev", github: "elixir-nx/explorer", branch: "main"}
     ]
   end
 

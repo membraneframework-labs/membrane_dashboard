@@ -172,7 +172,7 @@ defmodule Membrane.DashboardWeb.Live.Components.Plugins.ZipkinOpentelemetry do
   # paths constructed by reporter contain a VM's process id which is not present in
   # trace's tag values, therefore we need to get rid of that
   # e.g. 'pipeline@1111@<100.0>/some_path' -> 'pipeline@<100.0>/some_path' (delete '@1111' which is a VM's process id)
-  def tag_value_from_path(path) do
+  defp tag_value_from_path(path) do
     Regex.replace(~r/(pipeline@)([0-9]+@)(.*)/, path, "\\1\\3")
   end
 
