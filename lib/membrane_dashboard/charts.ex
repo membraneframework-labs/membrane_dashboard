@@ -25,7 +25,7 @@ defmodule Membrane.Dashboard.Charts do
   """
   @type chart_accumulator_t :: map()
   @type chart_query_result_t ::
-          {:ok, {chart_data_t(), chart_paths_mapping_t(), chart_accumulator_t()}}
+          {:ok, {chart_data_t(), chart_paths_mapping_t(), Explorer.DataFrame.t()}}
           | {:error, any()}
 
   @type metric_t :: :caps | :event | :store | :take_and_demand | :buffer | :queue_len | :bitrate
