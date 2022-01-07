@@ -51,6 +51,8 @@ defmodule Membrane.Dashboard.Charts.ChartDataFrame do
 
     to_chart(df, paths_mapping, fn series ->
       series
+      # replace nils with zeroes as this breaks the rolling_sum calculations
+      |> Series.transform(&if(is_nil(&1), do: 0, else: &1))
       |> Series.rolling_sum(rolling_sum_step, nil, false)
       |> Series.to_list()
     end)
@@ -92,10 +94,11 @@ defmodule Membrane.Dashboard.Charts.ChartDataFrame do
   Additionally the merging operating looks for stale series (present in first data frame but not
   in the second one while having all values set to nil) and deletes them.
 
-
+  The `back_shift` parameter is used to overwrite `df1`'s last measurements by the `df2`'s
+  in case `df1` has incomplete measurements which may happen when the necessary data has not yet been saved to database.
   """
-  @spec merge(DataFrame.t(), DataFrame.t()) :: chart_t()
-  def merge(df1, df2) do
+  @spec merge(DataFrame.t(), DataFrame.t(), non_neg_integer()) :: DataFrame.t()
+  def merge(df1, df2, back_shift) do
     series1 = df1 |> DataFrame.names() |> MapSet.new()
     series2 = df2 |> DataFrame.names() |> MapSet.new()
 
@@ -138,7 +141,7 @@ defmodule Membrane.Dashboard.Charts.ChartDataFrame do
       df1
       |> DataFrame.select(MapSet.to_list(series_to_drop), :drop)
       # we need to drop leading values from rows
-      |> DataFrame.slice(new_series_n, old_series_n)
+      |> DataFrame.slice(new_series_n, old_series_n - new_series_n - back_shift)
       |> DataFrame.mutate(new_series |> Map.new(&{&1, old_series_nils}))
 
     df2 = DataFrame.mutate(df2, old_series |> Map.new(&{&1, new_series_nils}))

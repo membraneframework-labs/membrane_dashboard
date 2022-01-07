@@ -18,6 +18,8 @@ interface RefreshData {
   data: ChartData;
 }
 
+const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}:{fff}");
+
 const ChartsHook = {
   destroyed(this: Hook) {
     Object.values(this.charts).forEach((chart) => chart.destroy());
@@ -58,9 +60,8 @@ const ChartsHook = {
 
       // x axis ticks are given in seconds, but for the plot they need to be in milliseconds, so 'rawValue'
       // is multiplied by 1000
-      const formatter = uPlot.fmtDate("{YYYY}-{MM}-{DD} {H}:{mm}:{ss}");
       chartData.series[0].value = (_, rawValue) => {
-        return formatter(new Date(rawValue * 1000));
+        return formatter(new Date(rawValue * 1000)) + `    -> ${rawValue}`;
       };
 
       // configures series and adds them to the chart
@@ -107,6 +108,11 @@ const ChartsHook = {
 
         for (let i = 0; i < chartData.series.length; i++) {
           const series = chartData.series[i];
+
+          series.value = (_, rawValue) => {
+            return formatter(new Date(rawValue * 1000)) + `    -> ${rawValue}`;
+          };
+
           const color = randomColor();
           series.stroke = color;
           series.spanGaps = true;

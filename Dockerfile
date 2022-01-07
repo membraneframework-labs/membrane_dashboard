@@ -1,13 +1,21 @@
-FROM elixir:1.12.3-alpine AS build
+ARG BUILDER_IMAGE="hexpm/elixir:1.12.3-erlang-24.1.4-debian-bullseye-20210902-slim"
+ARG RUNNER_IMAGE="debian:bullseye-20210902-slim"
+
+FROM ${BUILDER_IMAGE} as builder
 
 # install build dependencies
 RUN \
-    apk add --no-cache \
+    apt-get update -y &&  apt-get install -y \
     inotify-tools \
-    build-base \
+    build-essential \
     npm \
     git \
-    openssl-dev  
+    curl \
+    libssl-dev
+
+# Get Rust (needed for rustler purposes)
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y -v
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create build workdir
 WORKDIR /app
@@ -22,40 +30,39 @@ ENV MIX_ENV=prod
 # install mix dependencies
 COPY mix.exs mix.lock ./
 COPY config config
+RUN mix deps.get --only $MIX_ENV
 RUN mix do deps.get, deps.compile
+# watch out for this, we may want to do that before compiling deps
+
 
 # build assets
 COPY assets/package.json assets/package-lock.json ./assets/
 RUN npm --prefix ./assets ci --progress=false --no-audit --loglevel=error
 
+# lib needs to be here so tailwind can scan templates' css classes
+COPY lib lib
 COPY priv priv
 COPY assets assets
-RUN npm run --prefix ./assets deploy
-RUN mix phx.digest
+RUN mix assets.deploy
 
 # compile and build release
-COPY lib lib
-
 RUN mix do compile, release
 
 # prepare release image
-FROM alpine:3.13 AS app
+FROM ${RUNNER_IMAGE}
 
 # install runtime dependencies
 RUN \
-    apk add --no-cache \
+    apt-get update -y && apt-get install -y \
     inotify-tools \
     openssl \
-    ncurses-libs \
-    curl
+    libncurses5 \
+    curl \
+    libstdc++6
 
 WORKDIR /app
 
-RUN chown nobody:nobody /app
-
-USER nobody:nobody
-
-COPY --from=build --chown=nobody:nobody /app/_build/prod/rel/membrane_dashboard ./
+COPY --from=builder /app/_build/prod/rel/membrane_dashboard ./
 
 ENV HOME=/app
 

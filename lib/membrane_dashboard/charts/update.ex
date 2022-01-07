@@ -52,7 +52,10 @@ defmodule Membrane.Dashboard.Charts.Update do
       latest_time: last_time_to
     } = context
 
-    update_from = last_time_to + accuracy
+    # query 2 seconds back to compensate for potentially data that has not yet been inserted
+    back_shift = floor(1_000 / accuracy * 2)
+
+    update_from = last_time_to - accuracy * back_shift
 
     # TODO: we should query with a certain amount of time in the past to mask a situation where
     # measurements have not yet been persisted and the chart gets clunky
@@ -63,7 +66,8 @@ defmodule Membrane.Dashboard.Charts.Update do
         new_df =
           Membrane.Dashboard.Charts.ChartDataFrame.from_rows(rows, update_from, time_to, accuracy)
 
-        df = Membrane.Dashboard.Charts.ChartDataFrame.merge(old_df, new_df)
+        # back_shift + 1 because we don't want to repeat the last timestamp twice
+        df = Membrane.Dashboard.Charts.ChartDataFrame.merge(old_df, new_df, back_shift + 1)
 
         chart =
           cond do

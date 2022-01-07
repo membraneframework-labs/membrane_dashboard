@@ -4,7 +4,7 @@ config :membrane_dashboard,
   ecto_repos: [Membrane.Dashboard.Repo]
 
 config :esbuild,
-  version: "0.12.15",
+  version: "0.14.0",
   default: [
     args: ~w(
         src/index.ts
