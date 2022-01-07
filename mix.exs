@@ -26,6 +26,7 @@ defmodule Membrane.Dashboard.MixProject do
 
   defp deps do
     [
+      {:explorer, "~> 0.1.0-dev", github: "elixir-nx/explorer", branch: "main"},
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:phoenix, "~> 1.6.2"},
@@ -43,8 +44,7 @@ defmodule Membrane.Dashboard.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:credo, "~> 1.5", only: :dev},
       {:esbuild, "~> 0.1", runtime: Mix.env() == :dev},
-      {:httpoison, "~> 1.8"},
-      {:explorer, "~> 0.1.0-dev", github: "elixir-nx/explorer", branch: "main"}
+      {:httpoison, "~> 1.8"}
     ]
   end
 
