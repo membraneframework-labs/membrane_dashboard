@@ -139,6 +139,7 @@ defmodule Membrane.DashboardWeb.Live.Helpers do
     """
   end
 
+  @spec opentelemetry_icon(map()) :: Phoenix.LiveView.Rendered.t()
   def opentelemetry_icon(assigns) do
     assigns = assign_class(assigns)
 

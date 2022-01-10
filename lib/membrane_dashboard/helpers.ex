@@ -1,7 +1,7 @@
 defmodule Membrane.Dashboard.Helpers do
   @moduledoc false
 
-  @beginning_of_time ~U[1970-01-01 00:00:00Z]
+  @beginning_of_time ~U[1970-01-01 00:00:00.000Z]
 
   @doc """
   Receives UNIX time in milliseconds add returns DateTime (appropriate format for SQL queries).

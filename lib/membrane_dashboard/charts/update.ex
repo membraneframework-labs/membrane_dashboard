@@ -46,136 +46,47 @@ defmodule Membrane.Dashboard.Charts.Update do
     - list of all paths.
   """
   @spec query(Context.t()) :: Charts.chart_query_result_t()
-  def query(
-        %Context{time_from: time_from, time_to: time_to, metric: metric, accuracy: accuracy} =
-          context
-      ) do
+  def query(%Context{time_to: time_to, metric: metric, accuracy: accuracy, df: old_df} = context) do
     %Context{
       paths_mapping: old_paths_mapping,
-      data: data,
-      accumulators: accumulator,
       latest_time: last_time_to
     } = context
 
-    update_from = last_time_to + accuracy
+    # query 2 seconds back to compensate for potentially data that has not yet been inserted
+    back_shift = floor(1_000 / accuracy * 2)
+
+    update_from = last_time_to - accuracy * back_shift
 
     case query_measurements(update_from, time_to, metric, accuracy) do
       {:ok, rows, new_paths_mapping} ->
-        total_new_paths = new_paths_count(old_paths_mapping, rows)
+        paths_mapping = Map.merge(old_paths_mapping, new_paths_mapping)
 
-        joined_paths_mapping = Map.merge(old_paths_mapping, new_paths_mapping)
+        new_df =
+          Membrane.Dashboard.Charts.ChartDataFrame.from_rows(rows, update_from, time_to, accuracy)
 
-        # Create data for newly added series
-        new_series_data = create_new_series(accuracy, time_from, last_time_to, total_new_paths)
+        # back_shift + 1 because we don't want to repeat the last timestamp twice
+        df = Membrane.Dashboard.Charts.ChartDataFrame.merge(old_df, new_df, back_shift + 1)
 
-        {new_data, accumulator} =
-          extract_new_data(
-            metric,
-            accumulator,
-            accuracy,
-            update_from,
-            time_to,
-            rows,
-            joined_paths_mapping
-          )
+        chart =
+          cond do
+            metric in ["caps", "event"] ->
+              Membrane.Dashboard.Charts.ChartDataFrame.to_cumulative_chart(df, paths_mapping)
 
-        # Truncate old data so that we stay within a proper time range
-        # NOTE: first row of data field consists of timestamps and a single timestamp denotes a column to which all values will belong
-        [old_timestamps | old_values] = data.data
+            metric in ["buffer", "bitrate"] ->
+              Membrane.Dashboard.Charts.ChartDataFrame.to_changes_per_second_chart(
+                df,
+                paths_mapping,
+                accuracy
+              )
 
-        truncated_timestamps =
-          Enum.drop_while(old_timestamps, fn timestamp -> timestamp < to_seconds(time_from) end)
+            true ->
+              Membrane.Dashboard.Charts.ChartDataFrame.to_simple_chart(df, paths_mapping)
+          end
 
-        to_drop = length(old_timestamps) - length(truncated_timestamps)
-
-        truncated_old_values =
-          Enum.map(old_values, fn one_series_values -> Enum.drop(one_series_values, to_drop) end)
-
-        truncated_old_data = [truncated_timestamps | truncated_old_values]
-        updated_data = append_data(truncated_old_data ++ new_series_data, new_data)
-
-        chart_data = %{
-          # this is just wrong...
-          series:
-            joined_paths_mapping
-            |> Enum.sort_by(fn {key, _value} -> key end)
-            |> Enum.map(fn {_key, value} -> %{label: value} end),
-          data: updated_data
-        }
-
-        {:ok, {chart_data, joined_paths_mapping, accumulator}}
+        {:ok, {chart, paths_mapping, df}}
 
       :error ->
         {:error, "Cannot fetch update data for charts"}
     end
-  end
-
-  # returns paths from database query result which were not present before update
-  defp new_paths_count(old_paths, rows) do
-    old_ids =
-      old_paths
-      |> Map.keys()
-      |> MapSet.new()
-
-    rows
-    |> MapSet.new(fn [_time, path_id, _size] -> path_id end)
-    |> MapSet.difference(old_ids)
-    |> MapSet.size()
-  end
-
-  # returns pair with:
-  # - list of uPlot Series with labels (maps: %{label: path_name})
-  # - list filled with nils for every new series (so list of lists)
-  defp create_new_series(accuracy, time_from, time_to, new_paths) do
-    nils = for _ <- 1..timeline_interval_size(time_from, time_to, accuracy), do: nil
-    data = for _ <- 1..new_paths, do: nils
-
-    data
-  end
-
-  # creates list of values for every path in `paths`
-  # such list consists of values for every timestamp between `time_from` and `time_to` with given `accuracy`
-  # values are extracted from `rows` - result of database query
-  # values for metrics `caps` and `event` are altered - they show sum of processed metrics from the beginning of live update
-  # returns list of lists:
-  # - first list contains timestamps
-  # - next lists contains paths data
-  defp extract_new_data(metric, accumulator, accuracy, time_from, time_to, rows, paths_mapping) do
-    interval = timeline_interval(time_from, time_to, accuracy)
-
-    {data_by_paths, accumulator} =
-      cond do
-        metric in ["caps", "event"] ->
-          to_cumulative_series(rows, interval, accumulator)
-
-        metric in ["buffer", "bitrate"] ->
-          to_changes_per_second_series(rows, interval, accumulator)
-
-        true ->
-          to_simple_series(rows, interval)
-      end
-      |> Enum.unzip()
-
-    nils = for _ <- 1..length(interval), do: nil
-
-    accumulator_ids = Enum.map(data_by_paths, fn {path_id, _data} -> path_id end)
-
-    mapped_data = Map.new(data_by_paths)
-
-    path_ids =
-      paths_mapping
-      |> Map.keys()
-      |> Enum.sort()
-
-    data = Enum.map(path_ids, &Map.get(mapped_data, &1, nils))
-
-    {[interval | data], Enum.zip(accumulator_ids, accumulator) |> Map.new()}
-  end
-
-  # appends new data for every series
-  defp append_data(old_series, new_series) do
-    old_series
-    |> Enum.zip(new_series)
-    |> Enum.map(fn {old, new} -> old ++ new end)
   end
 end

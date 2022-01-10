@@ -12,7 +12,9 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   require Logger
 
   @type rows_t :: [[term()]]
-  @type interval_t :: [float()]
+  @type interval_t ::
+          {time_from :: non_neg_integer(), time_to :: non_neg_integer(),
+           accuracy :: non_neg_integer()}
   @type series_t :: [
           {{path_id :: non_neg_integer(), data :: list(integer())}, accumulator :: any()}
         ]
@@ -98,8 +100,8 @@ defmodule Membrane.Dashboard.Charts.Helpers do
     [1619776875.8500001, 1619776875.8600001, 1619776875.8700001, 1619776875.88, 1619776875.89, 1619776875.9]
 
   """
-  @spec timeline_interval(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: [float()]
-  def timeline_interval(from, to, accuracy) do
+  @spec timeline_timestamps(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: [float()]
+  def timeline_timestamps(from, to, accuracy) do
     accuracy_in_seconds = to_seconds(accuracy)
 
     size = timeline_interval_size(from, to, accuracy)
@@ -109,166 +111,9 @@ defmodule Membrane.Dashboard.Charts.Helpers do
   end
 
   @doc """
-  Creates a simple series which have unchanged values per every interval timestamp.
+  Applies accuracy to a time represented in a number of milliseconds to match format returned from database.
   """
-  @spec to_simple_series(rows_t(), [float()]) :: series_t()
-  def to_simple_series(rows, interval) do
-    rows
-    |> rows_to_data_by_paths()
-    |> process_simple_series(interval)
-  end
-
-  @doc """
-  Creates a series where chart values are computed as a sum of values for the last second.
-  """
-  @spec to_changes_per_second_series(rows_t(), interval_t(), accumulator :: map()) :: series_t()
-  def to_changes_per_second_series(rows, interval, initial_accumulator) do
-    rows
-    |> rows_to_data_by_paths()
-    |> process_changes_per_second_series(interval, initial_accumulator)
-  end
-
-  @doc """
-  Creates an aggregate series with an increasing values (each value is a sum of all previous and current value).
-  """
-  @spec to_cumulative_series(rows_t(), interval_t(), accumulator :: map()) :: series_t()
-  def to_cumulative_series(rows, interval, initial_accumulator) do
-    rows
-    |> rows_to_data_by_paths()
-    |> process_cumulative_series(interval, initial_accumulator)
-  end
-
-  # converts rows from `measurements` table to list of tuples `{path_id, data}`, where data is a list of tuples contatining timestamps and values
-  defp rows_to_data_by_paths(rows) do
-    Enum.group_by(rows, fn [_time, path_id, _value] -> path_id end, fn [time, _path_id, value] ->
-      {Decimal.to_float(time), value}
-    end)
-  end
-
-  defp process_simple_series(data_by_paths, interval) do
-    data_by_paths
-    |> Enum.map(fn {path, data} ->
-      processed_data =
-        data
-        |> process_path_data(fn time, values -> {time, Enum.max(values, fn -> 0 end)} end)
-        |> Enum.into(%{})
-
-      {{path, fill_with_nils(processed_data, interval)}, nil}
-    end)
-  end
-
-  defp process_cumulative_series(data_by_paths, interval, initial_accumulators) do
-    data_by_paths
-    |> Enum.map(fn {path, data} ->
-      processed_data =
-        data
-        |> process_path_data(fn time, values -> {time, Enum.sum(values)} end)
-        |> Enum.into(%{})
-
-      {data, accumulator} =
-        fill_with_nils(processed_data, interval, initial_accumulators[path] || 0)
-
-      {{path, data}, accumulator}
-    end)
-  end
-
-  defp process_changes_per_second_series(data_by_paths, interval, initial_accumulators) do
-    data_by_paths
-    |> Enum.map(fn {path, data} ->
-      initial_accumulator = Map.get(initial_accumulators, path, {0, []})
-
-      {processed_data, accumulator} =
-        calculate_changes_per_second_for_data(data, initial_accumulator)
-
-      {{path, fill_with_nils(Map.new(processed_data), interval)}, accumulator}
-    end)
-  end
-
-  # it basically traverses the list with data and for each measurement it replaces the value
-  # with a sum calculated for a duration of one second till given timestamp
-  #
-  # accumulator consists of the last sum and measurements range of the last second before first timestamp in given data list,
-  # it is needed in case when given data is an update data and the sum needs to be continuous  with previous data
-  defp calculate_changes_per_second_for_data(data, initial_accumulator) do
-    {init_sum, init_range} = initial_accumulator
-
-    {sum, range, processed_data} =
-      data
-      |> Enum.reduce({init_sum, init_range, []}, fn {time, value}, {sum_so_far, range, acc} ->
-        {to_stay, to_drop} =
-          range
-          |> Enum.split_while(fn {old_time, _value} ->
-            time - old_time < 1.0
-          end)
-
-        to_subtract =
-          to_drop
-          |> Enum.map(&elem(&1, 1))
-          |> Enum.sum()
-
-        sum_so_far = sum_so_far - to_subtract + value
-
-        {sum_so_far, [{time, value} | to_stay], [{time, sum_so_far} | acc]}
-      end)
-
-    {processed_data, {sum, range}}
-  end
-
-  # chunks measurements by the time (due to accuracy several measurements can have the same timestamp but only
-  # one value can be displayed on the chart) then uses `reduce_time_values` function to reduce grouped values into a single one.
-  defp process_path_data([{time, value} | data], reduce_time_values) do
-    data
-    |> Enum.chunk_while(
-      {time, [value]},
-      fn
-        {time, value}, {previous_time, acc} when time == previous_time ->
-          {:cont, {time, [value | acc]}}
-
-        {time, value}, {previous_time, acc} ->
-          {:cont, reduce_time_values.(previous_time, acc), {time, [value]}}
-      end,
-      fn {time, values} ->
-        {:cont, reduce_time_values.(time, values), nil}
-      end
-    )
-  end
-
-  # makes sure that border value read from user input has appropriate value to successfully match timestamps extracted from database
-  defp apply_accuracy(time, accuracy),
+  @spec apply_accuracy(non_neg_integer(), float()) :: float()
+  def apply_accuracy(time, accuracy),
     do: floor(time / (1000 * accuracy)) * accuracy
-
-  # to put data to uPlot, it is necessary to fill every gap in data by nils
-  defp fill_with_nils(path_data, interval),
-    do: interval |> Enum.map(&path_data[&1])
-
-  # if passed `initial_accumulator`, then value is equal to number of processed metrics plus `initial_accumulator` at every non-nil point
-  defp fill_with_nils(path_data, interval, initial_accumulator) do
-    interval
-    |> Enum.map_reduce(initial_accumulator, fn timestamp, accumulator ->
-      extract_with_measurements_counting(path_data, timestamp, accumulator)
-    end)
-  end
-
-  # if there is a value for given `timestamp`, adds it to the `accumulator` and returns the sum
-  # otherwise do not change `accumulator` and returns `nil`
-  defp extract_with_measurements_counting(path_data, timestamp, accumulator) do
-    if Map.has_key?(path_data, timestamp) do
-      {accumulator + path_data[timestamp], accumulator + path_data[timestamp]}
-    else
-      {nil, accumulator}
-    end
-  end
-
-  @doc """
-  Unzips a list consisting of 3 element tuples into 3 separate lists.
-  """
-  @spec unzip3(list()) :: {list(), list(), list()}
-  def unzip3(list),
-    do: :lists.reverse(list) |> do_unzip3([], [], [])
-
-  defp do_unzip3([{el1, el2, el3} | reversed_list], list1, list2, list3),
-    do: do_unzip3(reversed_list, [el1 | list1], [el2 | list2], [el3 | list3])
-
-  defp do_unzip3([], list1, list2, list3),
-    do: {list1, list2, list3}
 end

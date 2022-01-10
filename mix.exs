@@ -26,6 +26,7 @@ defmodule Membrane.Dashboard.MixProject do
 
   defp deps do
     [
+      {:explorer, "~> 0.1.0-dev", github: "elixir-nx/explorer", branch: "main"},
       {:ex_doc, "~> 0.22", only: :dev, runtime: false},
       {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:phoenix, "~> 1.6.2"},
@@ -52,7 +53,12 @@ defmodule Membrane.Dashboard.MixProject do
       setup: ["deps.get", "ecto.setup", "cmd npm install --prefix assets"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "assets.deploy": [
+        "cmd --cd assets npm run deploy",
+        "esbuild default --minify",
+        "phx.digest"
+      ]
     ]
   end
 end

@@ -55,8 +55,8 @@ defmodule Membrane.Dashboard.DataManager do
     accuracy = Keyword.fetch!(options, :accuracy)
     metrics = Keyword.fetch!(options, :metrics)
 
-    {chart_contexts, all_paths} =
-      Enum.reduce(metrics, {[], %{}}, fn metric, {contexts, all_paths} ->
+    chart_contexts =
+      Enum.reduce(metrics, [], fn metric, contexts ->
         new_context = %Context{
           time_from: time_from,
           time_to: time_to,
@@ -80,18 +80,13 @@ defmodule Membrane.Dashboard.DataManager do
             new_context
           end
 
-        {:ok, {chart, paths_mapping, accumulators}} = query_module(mode).query(context)
+        {:ok, {chart, paths_mapping, df}} = query_module(mode).query(context)
 
-        context = %Context{
-          context
-          | data: chart,
-            paths_mapping: paths_mapping,
-            accumulators: accumulators
-        }
+        context = %Context{context | paths_mapping: paths_mapping, df: df}
 
         send_data(respond_to, :charts, {mode, metric, chart})
 
-        {[{metric, context} | contexts], Map.merge(all_paths, paths_mapping)}
+        [{metric, context} | contexts]
       end)
 
     alive_pipelines =

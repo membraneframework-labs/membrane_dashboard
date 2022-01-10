@@ -32,43 +32,30 @@ defmodule Membrane.Dashboard.Charts.Full do
 
       _error ->
         chart = %{series: [], data: [[]]}
-        {:ok, {chart, _paths_mapping = %{}, _accumulators = %{}}}
+        {:ok, {chart, _paths_mapping = %{}, Explorer.DataFrame.from_map(%{})}}
     end
   end
 
   # prepares a single chart based on raw data from TimescaleDB
   defp prepare_chart(rows, time_from, time_to, metric, accuracy, paths_mapping) do
-    interval = timeline_interval(time_from, time_to, accuracy)
+    df = Membrane.Dashboard.Charts.ChartDataFrame.from_rows(rows, time_from, time_to, accuracy)
 
-    {path_to_data, accumulators} =
+    chart =
       cond do
-        metric in ["caps", "event"] -> to_cumulative_series(rows, interval, %{})
-        metric in ["buffer", "bitrate"] -> to_changes_per_second_series(rows, interval, %{})
-        true -> to_simple_series(rows, interval)
+        metric in ["caps", "event"] ->
+          Membrane.Dashboard.Charts.ChartDataFrame.to_cumulative_chart(df, paths_mapping)
+
+        metric in ["buffer", "bitrate"] ->
+          Membrane.Dashboard.Charts.ChartDataFrame.to_changes_per_second_chart(
+            df,
+            paths_mapping,
+            accuracy
+          )
+
+        true ->
+          Membrane.Dashboard.Charts.ChartDataFrame.to_simple_chart(df, paths_mapping)
       end
-      |> Enum.unzip()
 
-    {paths_ids, data} =
-      path_to_data
-      |> Enum.sort_by(fn {path_id, _data} -> path_id end)
-      |> Enum.unzip()
-
-    paths = Enum.map(paths_ids, &Map.fetch!(paths_mapping, &1))
-
-    chart_data = %{
-      series: series_from_paths(paths),
-      data: [interval | data]
-    }
-
-    mapped_accumulators =
-      paths
-      |> Enum.zip(accumulators)
-      |> Map.new()
-
-    {chart_data, paths_mapping, mapped_accumulators}
-  end
-
-  defp series_from_paths(paths) do
-    [%{label: "time"} | Enum.map(paths, &%{label: &1})]
+    {chart, paths_mapping, df}
   end
 end

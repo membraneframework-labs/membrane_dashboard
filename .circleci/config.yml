@@ -16,10 +16,13 @@ jobs:
 
     steps:
       - checkout
+      - run: curl https://sh.rustup.rs -sSf | bash -s -- -y -v
       - run: mix local.hex --force
       - run: mix local.rebar --force
       - run: mix deps.get
       - run: mix format --check-formatted
-      - run: mix compile
+      - run: |
+          export PATH="${HOME}/.cargo/bin:${PATH}"
+          which cargo && mix compile
       - run: mix dialyzer
       - run: mix docs

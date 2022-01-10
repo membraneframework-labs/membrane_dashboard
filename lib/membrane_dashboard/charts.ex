@@ -25,7 +25,7 @@ defmodule Membrane.Dashboard.Charts do
   """
   @type chart_accumulator_t :: map()
   @type chart_query_result_t ::
-          {:ok, {chart_data_t(), chart_paths_mapping_t(), chart_accumulator_t()}}
+          {:ok, {chart_data_t(), chart_paths_mapping_t(), Explorer.DataFrame.t()}}
           | {:error, any()}
 
   @type metric_t :: :caps | :event | :store | :take_and_demand | :buffer | :queue_len | :bitrate
@@ -45,10 +45,9 @@ defmodule Membrane.Dashboard.Charts do
     * `metric` - a metric name that the query should be performed against
 
     Fields that are used and necessary just for UPDATE query:
-    * `data` - resulting data from previous query,
     * `paths_mapping` - mapping from `path_id` present in rows returned from database to their string representations
-    * `accumulators` - mapping from `path_id` to its chart accumulator
     * `latest_time` - latest `time_to` parameter used for querying
+    * `df` - latest data frame carrying the whole chart for given metric
     """
 
     alias Membrane.Dashboard.Charts
@@ -59,12 +58,12 @@ defmodule Membrane.Dashboard.Charts do
             metric: String.t(),
             accuracy: non_neg_integer(),
             latest_time: non_neg_integer() | nil,
-            data: Charts.chart_data_t(),
             paths_mapping: Charts.chart_paths_mapping_t(),
-            accumulators: Charts.chart_accumulator_t()
+            df: Explorer.DataFrame.t() | nil
           }
 
     @enforce_keys [:time_from, :time_to, :accuracy, :metric]
-    defstruct @enforce_keys ++ [data: [], paths_mapping: %{}, accumulators: [], latest_time: nil]
+    defstruct @enforce_keys ++
+                [paths_mapping: %{}, latest_time: nil, df: nil]
   end
 end
