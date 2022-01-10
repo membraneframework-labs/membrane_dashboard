@@ -4,7 +4,7 @@ defmodule Membrane.Dashboard.MixProject do
   def project do
     [
       app: :membrane_dashboard,
-      version: "0.3.0",
+      version: "0.4.0",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: [:phoenix] ++ Mix.compilers(),
