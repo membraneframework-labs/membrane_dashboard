@@ -97,6 +97,9 @@ defmodule Membrane.Dashboard.Charts.ChartDataFrame do
   The `back_shift` parameter is used to overwrite `df1`'s last measurements by the `df2`'s
   in case `df1` has incomplete measurements which may happen when the necessary data has not yet been saved to database.
   """
+  # don't emit warning for this function as
+  # `Series.sum()` does not account for all the values being `nil`
+  @dialyzer {:nowarn_function, merge: 3}
   @spec merge(DataFrame.t(), DataFrame.t(), non_neg_integer()) :: DataFrame.t()
   def merge(df1, df2, back_shift) do
     series1 = df1 |> DataFrame.names() |> MapSet.new()
