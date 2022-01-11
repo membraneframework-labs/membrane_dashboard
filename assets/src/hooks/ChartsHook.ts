@@ -95,8 +95,8 @@ const ChartsHook = {
         !!chart,
         "Chart should be present during update but is not..."
       );
-      
-      // if the number of series has changed it means that 
+
+      // if the number of series has changed it means that
       // either new series have been added or removed
       // in such case just clear the chart and add all the series from the
       // chartData
