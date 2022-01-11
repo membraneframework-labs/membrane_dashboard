@@ -22,7 +22,7 @@ defmodule Membrane.DashboardWeb.Live.Components.ElementsSelect do
 
     metadata =
       "elements"
-      |> where([el], el.path == ^path)
+      |> where([el], el.path == ^path and fragment("metadata->'log_metadata' is not null"))
       |> select(fragment("metadata->'log_metadata'"))
       |> Repo.one()
       |> case do
