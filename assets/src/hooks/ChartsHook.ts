@@ -95,8 +95,8 @@ const ChartsHook = {
         !!chart,
         "Chart should be present during update but is not..."
       );
-      
-      // if the number of series has changed it means that 
+
+      // if the number of series has changed it means that
       // either new series have been added or removed
       // in such case just clear the chart and add all the series from the
       // chartData
@@ -109,10 +109,6 @@ const ChartsHook = {
         for (let i = 0; i < chartData.series.length; i++) {
           const series = chartData.series[i];
 
-          series.value = (_, rawValue) => {
-            return formatter(new Date(rawValue * 1000)) + `    -> ${rawValue}`;
-          };
-
           const color = randomColor();
           series.stroke = color;
           series.spanGaps = true;
@@ -121,6 +117,10 @@ const ChartsHook = {
           };
           chart.addSeries(series);
         }
+
+        chart.series[0].value = (_, rawValue) => {
+          return formatter(new Date(rawValue * 1000)) + `    -> ${rawValue}`;
+        };
       }
 
       // given series is empty therefore hide the charts

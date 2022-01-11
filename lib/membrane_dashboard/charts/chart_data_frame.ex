@@ -144,7 +144,7 @@ defmodule Membrane.Dashboard.Charts.ChartDataFrame do
       df1
       |> DataFrame.select(MapSet.to_list(series_to_drop), :drop)
       # we need to drop leading values from rows
-      |> DataFrame.slice(new_series_n, old_series_n - new_series_n - back_shift)
+      |> DataFrame.slice(new_series_n - back_shift - 1, old_series_n - new_series_n)
       |> DataFrame.mutate(new_series |> Map.new(&{&1, old_series_nils}))
 
     df2 = DataFrame.mutate(df2, old_series |> Map.new(&{&1, new_series_nils}))
