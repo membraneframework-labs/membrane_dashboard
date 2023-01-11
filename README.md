@@ -64,7 +64,7 @@ timescale/timescaledb:latest-pg14
 This is the most complicated part of all of this. First, add `membrane_timescaledb_reporter` to your `mix.exs`:
 
 ```elixir
-{:membrane_timescaledb_reporter, github: "membraneframework/membrane_timescaledb_reporter"}
+{:membrane_timescaledb_reporter, "~> 0.1.0"}
 ```
   
 Then, run
@@ -81,7 +81,7 @@ config :membrane_core,
     :links,
     :inits_and_terminates,
     {:metrics, [:caps]} # optional line, only add that if you want to
-	                    # use some of the metrics
+	                      # use some of the metrics
   ]
 
 config :membrane_timescaledb_reporter, Membrane.Telemetry.TimescaleDB.Repo,
