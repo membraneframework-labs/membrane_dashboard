@@ -61,6 +61,8 @@ timescale/timescaledb:latest-pg14
 
 ### Wiring a membrane pipeline to a `membrane_timescaledb_reporter`
 
+For this step you need to make changes to and run commands in your application directory (in the project with your membrane pipeline). 
+
 This is the most complicated part of all of this. First, add `membrane_timescaledb_reporter` to your `mix.exs`:
 
 ```elixir
@@ -130,6 +132,7 @@ end
 After this step, your application should automatically log all configured events to the database. If you decided to use `docker-compose`, you don't need to do anything else. If you decided to set up everything by yourself, there's one more step left.
 
 ### Running `membrane_dashboard`
+These commands need to be run in the `membrane_dashboard` directory.
 
 Fortunately, this is rather simple. You need to get all the dependencies:
 
