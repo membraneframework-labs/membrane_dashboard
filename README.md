@@ -81,7 +81,7 @@ config :membrane_core,
     :links,
     :inits_and_terminates,
     {:metrics, [:caps]} # optional line, only add that if you want to
-	                      # use some of the metrics
+	                # use some of the metrics
   ]
 
 config :membrane_timescaledb_reporter, Membrane.Telemetry.TimescaleDB.Repo,
